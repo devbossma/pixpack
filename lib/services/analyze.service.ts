@@ -9,19 +9,19 @@
  */
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { VertexAI }                              from '@google-cloud/vertexai'
-import { buildAnalyzePrompt }                    from '../prompts/analyze.prompt'
+import { createVertexClient } from '../vertex-client'
+import { buildAnalyzePrompt } from '../prompts/analyze.prompt'
 import type { ProductAnalysis, AnalyzeResponse } from '../types'
 
 export interface AnalyzeInput {
-  file:        File
+  file: File
   productHint: string
-  language:    string
+  language: string
 }
 
 export async function analyzeProduct(input: AnalyzeInput): Promise<AnalyzeResponse> {
   const { file, productHint } = input
-  const buffer   = Buffer.from(await file.arrayBuffer())
+  const buffer = Buffer.from(await file.arrayBuffer())
   const mimeType = file.type
 
   const [extractedImageUrl, analysis] = await Promise.all([
@@ -43,9 +43,9 @@ async function extractBackground(file: File): Promise<string> {
   photoroomFormData.append('padding', '0.1')
 
   const response = await fetch('https://image-api.photoroom.com/v2/edit', {
-    method:  'POST',
+    method: 'POST',
     headers: { 'x-api-key': process.env.PHOTOROOM_API_KEY! },
-    body:    photoroomFormData,
+    body: photoroomFormData,
   })
 
   if (!response.ok) {
@@ -54,7 +54,7 @@ async function extractBackground(file: File): Promise<string> {
   }
 
   const arrayBuffer = await response.arrayBuffer()
-  const filename    = `extracted-${crypto.randomUUID()}.png`
+  const filename = `extracted-${crypto.randomUUID()}.png`
 
   const supabase = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -74,39 +74,37 @@ async function extractBackground(file: File): Promise<string> {
 // ---- Task B: Gemini Vision product analysis ---------------------------------
 
 async function analyzeWithVision(
-  buffer:      Buffer,
-  mimeType:    string,
+  buffer: Buffer,
+  mimeType: string,
   productHint: string,
 ): Promise<ProductAnalysis> {
-  const vertexAI = new VertexAI({
-    project:  process.env.GOOGLE_CLOUD_PROJECT_ID!,
-    location: process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1',
-  })
-
-  const model = vertexAI.getGenerativeModel({
-    model:            'gemini-2.5-flash',
-    generationConfig: { responseMimeType: 'application/json' },
-  })
-
+  // Use createVertexClient() — same as generate.service.ts
+  // This correctly loads GOOGLE_APPLICATION_CREDENTIALS_JSON on Vercel
+  const ai = createVertexClient()
   const prompt = buildAnalyzePrompt(productHint)
 
-  const result = await model.generateContent({
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
     contents: [
       {
-        role:  'user',
+        role: 'user',
         parts: [
           { inlineData: { data: buffer.toString('base64'), mimeType } },
           { text: prompt },
         ],
       },
     ],
+    config: {
+      responseMimeType: 'application/json',
+      maxOutputTokens: 4096,
+    },
   })
 
-  const text = result.response.candidates?.[0]?.content?.parts?.[0]?.text
+  const text = response.text
   if (!text) throw new Error('Gemini Vision returned no analysis text')
 
   const firstBrace = text.indexOf('{')
-  const lastBrace  = text.lastIndexOf('}')
+  const lastBrace = text.lastIndexOf('}')
   if (firstBrace === -1 || lastBrace === -1) throw new Error('Gemini Vision returned no JSON object')
 
   return JSON.parse(text.slice(firstBrace, lastBrace + 1)) as ProductAnalysis
