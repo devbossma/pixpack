@@ -1,0 +1,57 @@
+/**
+ * lib/vertex-client.ts
+ *
+ * Single source of truth for Vertex AI client creation.
+ * Both /api/analyze and /api/generate import from here.
+ *
+ * Auth priority:
+ *   1. GOOGLE_APPLICATION_CREDENTIALS_JSON  → Vercel (single-line JSON string)
+ *   2. GOOGLE_APPLICATION_CREDENTIALS        → local dev (path to .json file)
+ *   3. undefined                             → Cloud Run / GKE ADC
+ *
+ * Region:
+ *   GOOGLE_CLOUD_LOCATION env var (default: us-central1)
+ *   NOTE: "global" does NOT work with @google/genai SDK — keep a real region.
+ *   To spread quota, use a specific region per request or increase quota in GCP.
+ */
+
+import path from 'path'
+import fs   from 'fs'
+import { GoogleGenAI } from '@google/genai'
+
+// ─── Credentials ──────────────────────────────────────────────────────────────
+
+function loadCredentials(): Record<string, unknown> | undefined {
+  const inlineJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+  if (inlineJson) {
+    try {
+      return JSON.parse(inlineJson)
+    } catch {
+      throw new Error('GOOGLE_APPLICATION_CREDENTIALS_JSON is not valid JSON')
+    }
+  }
+
+  const credPath = process.env.GOOGLE_APPLICATION_CREDENTIALS
+  if (credPath) {
+    const resolved = path.resolve(process.cwd(), credPath)
+    if (!fs.existsSync(resolved)) {
+      throw new Error(`Service account file not found at: ${resolved}`)
+    }
+    return JSON.parse(fs.readFileSync(resolved, 'utf-8'))
+  }
+
+  return undefined // Cloud Run / GKE use Application Default Credentials automatically
+}
+
+// ─── Client factory ───────────────────────────────────────────────────────────
+
+export function createVertexClient(): GoogleGenAI {
+  const credentials = loadCredentials()
+
+  return new GoogleGenAI({
+    vertexai: true,
+    project:  process.env.GOOGLE_CLOUD_PROJECT_ID!,
+    location: process.env.GOOGLE_CLOUD_LOCATION ?? 'us-central1',
+    ...(credentials ? { googleAuthOptions: { credentials } } : {}),
+  })
+}

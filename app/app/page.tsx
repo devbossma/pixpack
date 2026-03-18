@@ -1,0 +1,17 @@
+import { Topbar } from '@/components/layout/Topbar'
+import { Sidebar } from '@/components/layout/Sidebar'
+import { WorkspaceClient } from '@/components/WorkspaceClient'
+
+export default function WorkspacePage() {
+  return (
+    <div className="flex flex-col h-screen overflow-hidden">
+      <Topbar />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-y-auto">
+          <WorkspaceClient />
+        </main>
+      </div>
+    </div>
+  )
+}

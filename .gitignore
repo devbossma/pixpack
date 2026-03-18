@@ -1,41 +1,82 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# ─── Next.js build output ────────────────────────────────────────────────────
+.next/
+out/
+build/
+dist/
 
-# testing
-/coverage
+# ─── Environment variables ────────────────────────────────────────────────────
+# NEVER commit any .env file except .env.example
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
 
-# next.js
-/.next/
-/out/
+# ─── Google Cloud credentials ─────────────────────────────────────────────────
+# Service account JSON files — contain private keys
+# These MUST never be committed under any name or extension
+service-account.json
+service-account*.json
+*-service-account.json
+*.key.json
+gcloud-credentials.json
+google-credentials.json
+credentials.json
 
-# production
-/build
+# Block any JSON file that might be a service account
+# (too broad? Better safe than a private key leak)
+# Uncomment if you store other JSONs in the root:
+# *.json
 
-# misc
+# ─── Vercel ───────────────────────────────────────────────────────────────────
+.vercel
+
+# ─── Testing ──────────────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ─── OS and editor files ──────────────────────────────────────────────────────
 .DS_Store
-*.pem
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
-# debug
+# ─── Logs ────────────────────────────────────────────────────────────────────
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
+# ─── TypeScript ───────────────────────────────────────────────────────────────
 *.tsbuildinfo
 next-env.d.ts
+
+# ─── Uploads / user data ─────────────────────────────────────────────────────
+uploads/
+tmp/
+temp/
+
+# ─── Scripts that might contain secrets ──────────────────────────────────────
+scripts/test-*.ts
+scripts/test-*.js
