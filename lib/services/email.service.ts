@@ -88,7 +88,7 @@ function buildFromAddress(): string {
         console.warn('[email] RESEND_FROM_DOMAIN not set — using sandbox address')
         return 'onboarding@resend.dev'
     }
-    return `PixPack <hello@${domain}>`
+    return `PixPack <pixpack@${domain}>`
 }
 
 function buildPlainText(params: {
