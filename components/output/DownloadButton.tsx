@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Download } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import type { GeneratedPack } from '@/types'
 import { DownloadGateModal } from './DownloadGateModal'
 
@@ -21,9 +22,12 @@ export function DownloadButton({ pack }: { pack: GeneratedPack }) {
         </span>
       </button>
 
-      {showModal && (
-        <DownloadGateModal pack={pack} onClose={() => setShowModal(false)} />
-      )}
+      <AnimatePresence>
+        {showModal && (
+          <DownloadGateModal pack={pack} onClose={() => setShowModal(false)} />
+        )}
+      </AnimatePresence>
     </>
   )
 }
+

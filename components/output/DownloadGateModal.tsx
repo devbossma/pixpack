@@ -1,249 +1,332 @@
 'use client'
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Mail, Share2, Twitter, Instagram, Linkedin, CheckCircle2, Loader2 } from 'lucide-react'
-import type { GeneratedPack } from '@/types'
 
-type ModalState =
-  | { view: 'email' }
-  | { view: 'uploading' }
-  | { view: 'success' }
-  | { view: 'rate_limited'; reason: 'email' | 'ip' }
-  | { view: 'share_success' }
-  | { view: 'error'; message: string }
+/**
+ * components/output/DownloadGateModal.tsx
+ *
+ * Shown when the user clicks "Download ZIP".
+ * Gates the download behind an email field, then calls /api/request-download.
+ *
+ * States:
+ *   idle       → email input form
+ *   loading    → spinner on button while API call is in flight
+ *   success    → "Check your inbox" confirmation
+ *   error      → API returned error, show message + allow retry
+ *   rate_limit → 429 response, distinct message (form hidden)
+ *
+ * Escape / backdrop closes in: idle, error, rate_limit
+ * Escape / backdrop does NOT close in: loading, success
+ */
 
-const SHARE_OPTIONS = [
-  {
-    id: 'twitter' as const,
-    label: 'Share on X',
-    Icon: Twitter,
-    color: '#000000',
-    getText: (url: string) =>
-      `Just generated a full content pack in 60s with @PixPackApp 🔥\n\nOne product photo → 6 images + ad copy + engagement scores.\n\nFree: ${url}`,
-  },
-  {
-    id: 'instagram' as const,
-    label: 'Story on Instagram',
-    Icon: Instagram,
-    color: '#E1306C',
-    getText: () => '',
-  },
-  {
-    id: 'linkedin' as const,
-    label: 'Post on LinkedIn',
-    Icon: Linkedin,
-    color: '#0A66C2',
-    getText: () => '',
-  },
-] as const
+import { useEffect, useState }       from 'react'
+import { motion, AnimatePresence }    from 'framer-motion'
+import { X, Download, CheckCircle, Loader2, Mail } from 'lucide-react'
+import type { GeneratedPack }         from '@/types'
 
-interface Props {
-  pack: GeneratedPack
+type ModalState = 'idle' | 'loading' | 'success' | 'error' | 'rate_limit'
+
+interface DownloadGateModalProps {
+  pack:    GeneratedPack
   onClose: () => void
 }
 
-export function DownloadGateModal({ pack, onClose }: Props) {
-  const [state, setState] = useState<ModalState>({ view: 'email' })
-  const [email, setEmail] = useState('')
-  const [emailError, setEmailError] = useState('')
+export function DownloadGateModal({ pack, onClose }: DownloadGateModalProps) {
+  const [state,   setState]   = useState<ModalState>('idle')
+  const [email,   setEmail]   = useState('')
+  const [message, setMessage] = useState('')
 
-  async function handleSubmit() {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Please enter a valid email address')
-      return
+  const imageCount = pack.images.filter(i => i.status === 'done').length
+  const canClose   = state !== 'loading' && state !== 'success'
+
+  // Escape key — only when not in loading or success
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && canClose) onClose()
     }
-    setEmailError('')
-    setState({ view: 'uploading' })
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [canClose, onClose])
+
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
+    e.preventDefault()
+    if (!email.trim() || state === 'loading') return
+
+    setState('loading')
+    setMessage('')
 
     try {
-      // MOCK: test rate limit flow
-      if (email.includes('+limit')) {
-        await new Promise(r => setTimeout(r, 1000))
-        setState({ view: 'rate_limited', reason: 'email' })
+      const res = await fetch('/api/request-download', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: email.trim().toLowerCase(), pack }),
+      })
+
+      const data = await res.json() as { error?: string }
+
+      if (res.status === 429) {
+        setState('rate_limit')
+        setMessage(data.error ?? 'Too many requests. Try again tomorrow.')
         return
       }
 
-      // MOCK: 2 seconds to success
-      await new Promise(r => setTimeout(r, 2000))
-      
-      // MOCK: throw an error roughly 1 in 10 times to test error UI occasionally
-      // if (Math.random() < 0.1) throw new Error('Network error simulated')
-      
-      setState({ view: 'success' })
+      if (!res.ok) {
+        setState('error')
+        setMessage(data.error ?? 'Something went wrong. Please try again.')
+        return
+      }
 
-    } catch (err) {
-      setState({ view: 'error', message: err instanceof Error ? err.message : 'Something went wrong. Please try again.' })
+      setState('success')
+
+    } catch {
+      setState('error')
+      setMessage('Network error. Please check your connection and try again.')
     }
   }
 
-  async function handleShare(option: typeof SHARE_OPTIONS[number]) {
-    // We can simulate opening the window but won't completely in the mock so it doesn't pop up unnecessarily, or we'll simply let it run but we don't need real URL parameters for this mock
-    
-    // MOCK: wait 3s then success, back to email view
-    await new Promise(r => setTimeout(r, 3000))
-    setState({ view: 'share_success' })
-    
-    setTimeout(() => {
-      setState({ view: 'email' })
-    }, 2500)
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>): void {
+    if (e.target === e.currentTarget && canClose) onClose()
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)' }}
+      onClick={handleBackdropClick}
+    >
       <motion.div
-        initial={{ opacity: 0, scale: 0.93, y: 14 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.93, y: 14 }}
-        transition={{ ease: [0.34, 1.2, 0.64, 1], duration: 0.3 }}
-        className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full max-w-sm overflow-hidden shadow-[var(--shadow-lg)]"
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1,    y: 0  }}
+        exit={{    opacity: 0, scale: 0.95, y: 8  }}
+        transition={{ ease: [0.25, 0.1, 0.25, 1], duration: 0.2 }}
+        className="relative w-full max-w-md rounded-2xl p-6"
+        style={{
+          backgroundColor: 'var(--surface)',
+          border:          '1px solid var(--border)',
+          boxShadow:       'var(--shadow-lg)',
+        }}
       >
+        {/* Close button — hidden while loading or in success */}
+        {canClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        )}
+
         <AnimatePresence mode="wait">
 
-          {/* EMAIL INPUT */}
-          {state.view === 'email' && (
-            <motion.div key="email" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="flex items-start justify-between p-5 border-b border-[var(--border)]">
-                <div>
-                  <h3 className="font-display font-bold text-base text-[var(--text)]">Get your content pack</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
-                    We'll email you a secure download link.<br />Expires in 24 hours.
-                  </p>
-                </div>
-                <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)] p-1 transition-colors flex-shrink-0">
-                  <X size={15} />
-                </button>
-              </div>
-              <div className="p-5 space-y-3">
-                <div className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border bg-[var(--surface2)] transition-colors
-                  ${emailError ? 'border-red-400' : 'border-[var(--border)] focus-within:border-[var(--accent)]'}`}>
-                  <Mail size={14} className="text-[var(--text-muted)] flex-shrink-0" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => { setEmail(e.target.value); setEmailError('') }}
-                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                    placeholder="your@email.com"
-                    className="flex-1 bg-transparent text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none"
-                    autoFocus
-                  />
-                </div>
-                {emailError && <p className="text-xs text-red-400">{emailError}</p>}
-                <motion.button
-                  onClick={handleSubmit}
-                  whileTap={{ scale: 0.97 }}
-                  className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-display font-bold text-sm py-2.5 rounded-xl transition-colors"
+          {/* ── IDLE / LOADING / ERROR / RATE_LIMIT ── */}
+          {state !== 'success' && (
+            <motion.div
+              key="form"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.15 } }}
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-5">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{
+                    backgroundColor: 'var(--accent-dim)',
+                    border:          '1px solid rgba(255,77,28,0.2)',
+                  }}
                 >
-                  Send my pack →
-                </motion.button>
-                <p className="text-[11px] text-[var(--text-muted)] text-center">
-                  Free during beta · No spam, ever
-                </p>
-              </div>
-            </motion.div>
-          )}
-
-          {/* UPLOADING */}
-          {state.view === 'uploading' && (
-            <motion.div key="uploading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="p-10 flex flex-col items-center gap-3 text-center">
-              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.1, ease: 'linear' }}>
-                <Loader2 size={28} className="text-[var(--accent)]" />
-              </motion.div>
-              <p className="text-sm font-semibold text-[var(--text)]">Securing your pack...</p>
-              <p className="text-xs text-[var(--text-muted)]">Uploading {pack.images.length} images · Sending email</p>
-            </motion.div>
-          )}
-
-          {/* SUCCESS */}
-          {state.view === 'success' && (
-            <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="p-8 flex flex-col items-center gap-4 text-center">
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 18, delay: 0.1 }}>
-                <CheckCircle2 size={44} className="text-[var(--accent3)]" />
-              </motion.div>
-              <div>
-                <h3 className="font-display font-bold text-lg text-[var(--text)] mb-1">Check your inbox</h3>
-                <p className="text-sm text-[var(--text-secondary)]">Download link sent to</p>
-                <p className="text-sm font-semibold text-[var(--text)] mt-0.5">{email}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-2">Link expires in 24 hours · One-time use</p>
-              </div>
-              <button onClick={onClose}
-                className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] underline underline-offset-2 transition-colors mt-1">
-                Back to my pack
-              </button>
-            </motion.div>
-          )}
-
-          {/* RATE LIMITED */}
-          {state.view === 'rate_limited' && (
-            <motion.div key="ratelimit" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-              <div className="flex items-start justify-between p-5 border-b border-[var(--border)]">
+                  <Download size={18} style={{ color: 'var(--accent)' }} />
+                </div>
                 <div>
-                  <h3 className="font-display font-bold text-base text-[var(--text)]">Daily limit reached</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
-                    Share PixPack on social media<br />to unlock 3 more packs today
-                  </p>
-                </div>
-                <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text)] p-1 flex-shrink-0">
-                  <X size={15} />
-                </button>
-              </div>
-              <div className="p-4 space-y-2">
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--accent-dim)] mb-3">
-                  <Share2 size={13} className="text-[var(--accent)] flex-shrink-0" />
-                  <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                    Click any option below, share, and your download unlocks instantly
-                  </p>
-                </div>
-                {SHARE_OPTIONS.map(option => (
-                  <motion.button
-                    key={option.id}
-                    onClick={() => handleShare(option)}
-                    whileTap={{ scale: 0.97 }}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--surface2)] transition-all"
+                  <h2
+                    className="text-base font-semibold"
+                    style={{ color: 'var(--text)', fontFamily: 'var(--font-syne, sans-serif)' }}
                   >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: `${option.color}15` }}>
-                      <option.Icon size={15} style={{ color: option.color }} />
-                    </div>
-                    <span className="text-sm font-medium text-[var(--text)]">{option.label}</span>
-                    <span className="ml-auto text-xs text-[var(--accent)] font-semibold">Unlock →</span>
-                  </motion.button>
+                    Your pack is ready
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    Enter your email to receive the download link
+                  </p>
+                </div>
+              </div>
+
+              {/* Pack summary pills */}
+              <div className="flex gap-2 flex-wrap mb-5">
+                {[
+                  `${imageCount} images`,
+                  `${imageCount * 3} ad variants`,
+                  'Shopify listing',
+                  '24h link',
+                ].map(label => (
+                  <span
+                    key={label}
+                    className="text-xs px-2.5 py-1 rounded-full"
+                    style={{
+                      backgroundColor: 'var(--surface2)',
+                      border:          '1px solid var(--border)',
+                      color:           'var(--text-muted)',
+                    }}
+                  >
+                    {label}
+                  </span>
                 ))}
               </div>
-            </motion.div>
-          )}
 
-          {/* SHARE SUCCESS */}
-          {state.view === 'share_success' && (
-            <motion.div key="sharesuccess" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-              className="p-8 flex flex-col items-center gap-3 text-center">
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 18 }}>
-                <CheckCircle2 size={40} className="text-[var(--accent3)]" />
-              </motion.div>
-              <h3 className="font-display font-bold text-base text-[var(--text)]">Pack unlocked!</h3>
-              <p className="text-xs text-[var(--text-muted)]">Thanks for sharing. Returning to download...</p>
-            </motion.div>
-          )}
+              {/* Error message */}
+              {state === 'error' && (
+                <div
+                  className="rounded-lg px-3 py-2.5 mb-4 text-sm"
+                  style={{
+                    backgroundColor: 'rgba(255,77,28,0.08)',
+                    border:          '1px solid rgba(255,77,28,0.2)',
+                    color:           'var(--accent)',
+                  }}
+                >
+                  {message}
+                </div>
+              )}
 
-          {/* ERROR */}
-          {state.view === 'error' && (
-            <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              className="p-6 flex flex-col items-center gap-3 text-center">
-              <p className="text-sm text-[var(--text)]">{state.message}</p>
-              <button
-                onClick={() => setState({ view: 'email' })}
-                className="text-xs text-[var(--accent)] underline underline-offset-2"
+              {/* Rate limit message — distinct from error */}
+              {state === 'rate_limit' && (
+                <div
+                  className="rounded-lg px-3 py-2.5 mb-4 text-sm"
+                  style={{
+                    backgroundColor: 'rgba(255,184,0,0.08)',
+                    border:          '1px solid rgba(255,184,0,0.25)',
+                    color:           'var(--accent2)',
+                  }}
+                >
+                  {message}
+                </div>
+              )}
+
+              {/* Email form — hidden in rate_limit state */}
+              {state !== 'rate_limit' && (
+                <form onSubmit={handleSubmit}>
+                  <div className="relative mb-3">
+                    <Mail
+                      size={15}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ color: 'var(--text-muted)' }}
+                    />
+                    <input
+                      id="download-gate-email"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      required
+                      autoFocus
+                      disabled={state === 'loading'}
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors disabled:opacity-60"
+                      style={{
+                        backgroundColor: 'var(--surface2)',
+                        border:          '1px solid var(--border)',
+                        color:           'var(--text)',
+                      }}
+                      onFocus={e  => (e.target.style.borderColor = 'var(--accent)')}
+                      onBlur={e   => (e.target.style.borderColor = 'var(--border)')}
+                    />
+                  </div>
+
+                  <button
+                    id="download-gate-submit"
+                    type="submit"
+                    disabled={state === 'loading' || !email.trim()}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-opacity"
+                    style={{
+                      backgroundColor: 'var(--accent)',
+                      color:           '#fff',
+                      opacity:         (state === 'loading' || !email.trim()) ? 0.7 : 1,
+                      cursor:          (state === 'loading' || !email.trim()) ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {state === 'loading' ? (
+                      <>
+                        <Loader2 size={15} className="animate-spin" />
+                        Sending…
+                      </>
+                    ) : (
+                      <>Send my pack →</>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              <p
+                className="text-center text-xs mt-3"
+                style={{ color: 'var(--text-muted)' }}
               >
-                Try again
+                Free · No account · No spam
+              </p>
+            </motion.div>
+          )}
+
+          {/* ── SUCCESS ── */}
+          {state === 'success' && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-4"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.08 }}
+                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{
+                  backgroundColor: 'rgba(0,194,122,0.12)',
+                  border:          '1px solid rgba(0,194,122,0.25)',
+                }}
+              >
+                <CheckCircle size={26} style={{ color: 'var(--accent3)' }} />
+              </motion.div>
+
+              <h2
+                className="text-lg font-semibold mb-2"
+                style={{ color: 'var(--text)', fontFamily: 'var(--font-syne, sans-serif)' }}
+              >
+                Check your inbox
+              </h2>
+
+              <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>
+                We sent your download link to
+              </p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>
+                {email}
+              </p>
+              <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+                The link expires in 24 hours.
+              </p>
+              <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
+                Don&apos;t see it? Check your spam folder.
+              </p>
+
+              <button
+                id="download-gate-close"
+                onClick={onClose}
+                className="px-6 py-2 rounded-xl text-sm font-medium transition-colors"
+                style={{
+                  backgroundColor: 'var(--surface2)',
+                  border:          '1px solid var(--border)',
+                  color:           'var(--text)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+              >
+                Close
               </button>
             </motion.div>
           )}
 
         </AnimatePresence>
       </motion.div>
-    </div>
+    </motion.div>
   )
 }

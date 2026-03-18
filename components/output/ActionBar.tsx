@@ -3,6 +3,7 @@
 import { Download, Copy, Plus } from 'lucide-react'
 import type { GeneratedPack } from '@/types'
 import { useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { DownloadGateModal } from './DownloadGateModal'
 import { useGenerationStore } from '@/hooks/useGeneration'
 
@@ -52,9 +53,11 @@ export function ActionBar({ pack }: { pack: GeneratedPack }) {
         </button>
       </div>
 
-      {showModal && (
-        <DownloadGateModal pack={pack} onClose={() => setShowModal(false)} />
-      )}
+      <AnimatePresence>
+        {showModal && (
+          <DownloadGateModal pack={pack} onClose={() => setShowModal(false)} />
+        )}
+      </AnimatePresence>
     </>
   )
 }
