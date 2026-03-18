@@ -140,10 +140,10 @@ export async function GET(request: NextRequest) {
       .eq('id', tokenRecord.id)
 
     // 6. Stream ZIP
-    const zipBuffer = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
+    const zipBuffer = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
     const filename = `pixpack_${new Date().toISOString().slice(0, 10)}.zip`
 
-    return new NextResponse(zipBuffer, {
+    return new NextResponse(zipBuffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
