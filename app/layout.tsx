@@ -251,6 +251,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={clsx(syne.variable, jetbrainsMono.variable, cabinetGrotesk.variable)} suppressHydrationWarning>
       <head>
+        <meta name="google-site-verification" content="f3p2w_ru2f0gQx9b6YlUYY6RdyN7nPaELJ8zEZvRWEU" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -277,7 +278,6 @@ export default function RootLayout({
                 });
               `}
             </Script>
-            <meta name="google-site-verification" content="f3p2w_ru2f0gQx9b6YlUYY6RdyN7nPaELJ8zEZvRWEU" />
           </>
         )}
       </body>
