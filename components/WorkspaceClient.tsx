@@ -8,7 +8,7 @@ import { useGenerationStore, selectIsGenerating } from '@/hooks/useGeneration'
 export function WorkspaceClient() {
   const generationState = useGenerationStore((s) => s.generationState)
   const isGenerating = useGenerationStore(selectIsGenerating)
-  const { pack, setPack, regenerateImage, generateMissing } = usePackEditor()
+  const { pack, setPack, generateMissing } = usePackEditor()
 
   useEffect(() => {
     if (generationState.status === 'done') {
@@ -20,7 +20,6 @@ export function WorkspaceClient() {
     <div className="flex flex-col min-h-full">
       <OutputPanel
         pack={pack}
-        onRegenerate={regenerateImage}
         onGenerateMissing={generateMissing}
       />
 

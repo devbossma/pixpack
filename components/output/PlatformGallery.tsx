@@ -8,7 +8,6 @@ import { useGenerationStore } from '@/hooks/useGeneration'
 interface PlatformGalleryProps {
   pack: GeneratedPack | null
   isGenerating: boolean
-  onRegenerate: (imageId: string) => void
 }
 
 export const PLATFORM_ORDER: Platform[] = [
@@ -20,7 +19,7 @@ export const PLATFORM_ORDER: Platform[] = [
   'web_banner',
 ]
 
-export function PlatformGallery({ pack, isGenerating, onRegenerate }: PlatformGalleryProps) {
+export function PlatformGallery({ pack, isGenerating }: PlatformGalleryProps) {
   const config = useGenerationStore(s => s.config)
 
   const getSlotState = (platformId: Platform) => {
@@ -51,7 +50,6 @@ export function PlatformGallery({ pack, isGenerating, onRegenerate }: PlatformGa
         spec={spec}
         state={state}
         orderIndex={orderIndex}
-        onRegenerate={onRegenerate}
       />
     )
   }

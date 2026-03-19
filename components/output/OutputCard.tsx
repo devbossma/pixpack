@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ImageIcon, Megaphone, BarChart2, Download, RefreshCw, AlertTriangle, Clipboard, CheckCircle, Lightbulb } from 'lucide-react'
+import { ImageIcon, Megaphone, BarChart2, AlertTriangle, Clipboard, CheckCircle, Lightbulb } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { GeneratedImage } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
@@ -13,10 +13,9 @@ type Tab = 'image' | 'adcopy' | 'score'
 interface OutputCardProps {
   image: GeneratedImage
   index: number
-  onRegenerate: (imageId: string) => void
 }
 
-export function OutputCard({ image, index, onRegenerate }: OutputCardProps) {
+export function OutputCard({ image, index }: OutputCardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('image')
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
@@ -85,12 +84,6 @@ export function OutputCard({ image, index, onRegenerate }: OutputCardProps) {
                   <p className="text-xs text-[var(--text-muted)] text-center px-4">
                     Generation failed
                   </p>
-                  <button
-                    onClick={() => onRegenerate(image.id)}
-                    className="mt-2 text-xs px-3 py-1.5 rounded-lg border border-[var(--border)] hover:border-[var(--accent)] text-[var(--output-text)] transition-colors"
-                  >
-                    Regenerate
-                  </button>
                 </div>
               )}
 
@@ -109,31 +102,6 @@ export function OutputCard({ image, index, onRegenerate }: OutputCardProps) {
               <span className="absolute bottom-2 right-2 text-[10px] bg-black/40 text-white/80 px-2 py-0.5 rounded-full font-mono backdrop-blur-sm z-10">
                 {spec?.width ?? 1080}×{spec?.height ?? 1080}
               </span>
-              {/* Hover overlay */}
-              {image.status === 'done' && (
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 z-20">
-                  <button
-                    onClick={() => {
-                      if (!image.imageBase64) return
-                      const a = document.createElement('a')
-                      a.href = image.imageBase64
-                      a.download = `pixpack_${image.platform}_${index}.png`
-                      a.click()
-                    }}
-                    className="flex items-center gap-1.5 bg-white/90 text-gray-800 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-white transition"
-                  >
-                     <Download size={16} />
-                    Download
-                  </button>
-                  <button
-                    onClick={() => onRegenerate(image.id)}
-                    className="flex items-center gap-1.5 bg-[var(--accent)] text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:brightness-110 transition"
-                  >
-                     <RefreshCw size={16} />
-                    Regenerate
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 

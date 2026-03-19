@@ -4,6 +4,7 @@ export const siteConfig = {
   name: "PixPack",
   description: "Global Audience-Aware Content Engine",
   url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+  handle: "@pixpackapp",
 }
 
 export const AGE_RANGES: { id: AgeRange; label: string }[] = [

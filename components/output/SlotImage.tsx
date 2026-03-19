@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, RefreshCw, ImageIcon } from 'lucide-react'
+import { ImageIcon } from 'lucide-react'
 import type { GeneratedImage, PlatformSpec } from '@/types'
 
 function ratioToCss(ratio: string): string {
@@ -10,19 +10,12 @@ function ratioToCss(ratio: string): string {
 interface SlotImageProps {
   image: GeneratedImage
   spec: PlatformSpec
-  onRegenerate: (imageId: string) => void
 }
 
-export function SlotImage({ image, spec, onRegenerate }: SlotImageProps) {
+export function SlotImage({ image, spec }: SlotImageProps) {
   const ratio = ratioToCss(spec.aspectRatio)
 
-  function handleDownload() {
-    if (!image.imageBase64) return
-    const a = document.createElement('a')
-    a.href = image.imageBase64
-    a.download = `pixpack_${image.platform}.png`
-    a.click()
-  }
+
 
   return (
     <div
@@ -61,27 +54,9 @@ export function SlotImage({ image, spec, onRegenerate }: SlotImageProps) {
       </div>
 
       {/* 
-        Hover state: Subtle dark overlay (30% max opacity),
-        Buttons slide up from the bottom via CSS translate.
+        Hover state: Subtle dark overlay (30% max opacity).
       */}
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 pointer-events-none" />
-
-      <div className="absolute inset-x-0 bottom-12 flex items-center justify-center gap-2 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out z-20">
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-1.5 bg-white/95 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-white shadow-[var(--shadow-md)] transition-colors pointer-events-auto"
-        >
-          <Download size={14} />
-          Download
-        </button>
-        <button
-          onClick={() => onRegenerate(image.id)}
-          className="flex items-center gap-1.5 bg-[var(--surface2)]/95 text-white border border-[var(--border)] text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-[var(--surface)] hover:border-[var(--border-hover)] shadow-[var(--shadow-md)] transition-colors pointer-events-auto backdrop-blur-sm"
-        >
-          <RefreshCw size={14} />
-          Regen
-        </button>
-      </div>
     </div>
   )
 }

@@ -11,11 +11,10 @@ import { useGenerationStore, selectIsGenerating } from '@/hooks/useGeneration'
 
 interface OutputSectionProps {
   pack: GeneratedPack | null
-  onRegenerate: (imageId: string) => void
   onGenerateMissing?: (platformId: Platform) => void
 }
 
-export function OutputSection({ pack, onRegenerate, onGenerateMissing }: OutputSectionProps) {
+export function OutputSection({ pack, onGenerateMissing }: OutputSectionProps) {
   const isGenerating = useGenerationStore(selectIsGenerating)
 
   if (!pack && !isGenerating) return (
@@ -41,7 +40,6 @@ export function OutputSection({ pack, onRegenerate, onGenerateMissing }: OutputS
       <PlatformGallery
         pack={pack}
         isGenerating={isGenerating}
-        onRegenerate={onRegenerate}
       />
 
       {pack && !isGenerating && (

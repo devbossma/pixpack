@@ -17,14 +17,13 @@ interface PlatformSlotProps {
   spec: PlatformSpec
   state: SlotState
   orderIndex: number
-  onRegenerate: (imageId: string) => void
 }
 
 function ratioToCss(ratio: string): string {
   return ratio.replace(':', '/')
 }
 
-export function PlatformSlot({ platformId, spec, state, orderIndex, onRegenerate }: PlatformSlotProps) {
+export function PlatformSlot({ platformId, spec, state, orderIndex }: PlatformSlotProps) {
   // Common wrapper styling that all slots share to maintain the grid
   const wrapperClass = "flex flex-col w-full"
   const ratio = ratioToCss(spec.aspectRatio)
@@ -102,14 +101,6 @@ export function PlatformSlot({ platformId, spec, state, orderIndex, onRegenerate
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 bg-red-500/5 text-center">
             <AlertTriangle size={24} className="text-[var(--accent)]" />
             <span className="text-sm font-semibold text-[var(--text)]">Generation failed</span>
-            {state.image && (
-              <button
-                onClick={() => onRegenerate(state.image!.id)}
-                className="text-xs px-4 py-2 mt-2 rounded-lg bg-[var(--surface2)] border border-[var(--border)] hover:border-[var(--accent)] text-[var(--text)] transition-colors"
-              >
-                Regenerate
-              </button>
-            )}
           </div>
         </div>
         {/* Placeholder for tabs area */}
@@ -131,7 +122,7 @@ export function PlatformSlot({ platformId, spec, state, orderIndex, onRegenerate
       }}
       className={`${wrapperClass} rounded-xl border border-[var(--output-border)] bg-[var(--output-surface)] overflow-hidden shadow-[var(--shadow-sm)]`}
     >
-      <SlotImage image={image} spec={spec} onRegenerate={onRegenerate} />
+      <SlotImage image={image} spec={spec} />
       <SlotTabs image={image} />
     </motion.div>
   )

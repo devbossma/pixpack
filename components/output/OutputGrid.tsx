@@ -18,7 +18,7 @@ export function OutputGrid({ images, onRegenerate, onGenerateMissing }: OutputGr
     return (
       <motion.div key={platformId} variants={staggerItem} className="w-full h-full">
         {img ? (
-          <OutputCard image={img} index={index} onRegenerate={onRegenerate} />
+          <OutputCard image={img} index={index} />
         ) : (
           <TemplateCard
             platformId={platformId}
