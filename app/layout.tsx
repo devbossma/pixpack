@@ -104,7 +104,7 @@ export const metadata: Metadata = {
     title: 'PixPack — Turn 1 Product Photo Into a Full e-commerce Content Pack',
     description: '6 AI-generated, platform-native images + ad copy in 60 seconds. Culturally adapted for any market. No studio. No designer.',
     images: [{
-      url: `${siteConfig.url}/og-image.png`,
+      url: '/og-image.png',
       width: 1200,
       height: 630,
       alt: 'PixPack — AI product content pack generator',
@@ -117,7 +117,7 @@ export const metadata: Metadata = {
     creator: siteConfig.handle,
     title: 'PixPack — Turn 1 Product Photo Into a Full Content Pack',
     description: '6 AI-generated images + 18 ad variants + Shopify listing. 60 seconds.',
-    images: [`${siteConfig.url}/og-image.png`],
+    images: ['/og-image.png'],
   },
   applicationName: 'PixPack',
   category: 'technology',
