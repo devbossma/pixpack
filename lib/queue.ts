@@ -32,10 +32,11 @@ import type { GenerateInput } from './services/generate.service'
 
 // ─── Upstash Redis client ──────────────────────────────────────────────────────
 
-export const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// export const redis = new Redis({
+//     url: process.env.UPSTASH_REDIS_REST_URL!,
+//     token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+// })
+const redis = Redis.fromEnv();
 
 // ─── Keys ──────────────────────────────────────────────────────────────────────
 
@@ -75,7 +76,8 @@ export async function enqueueJob(input: GenerateInput): Promise<EnqueueResult> {
     const jobId = crypto.randomUUID()
 
     // Push jobId to the tail of the pending list
-    await redis.lpush(QUEUE_LIST, jobId)
+    // await redis.lpush(QUEUE_LIST, jobId)
+    await redis.set(QUEUE_LIST, jobId);
 
     // Get current queue length to calculate position
     const queueLength = await redis.llen(QUEUE_LIST)
