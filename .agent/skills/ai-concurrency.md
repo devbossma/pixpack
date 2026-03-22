@@ -12,7 +12,7 @@ Step                          Budget    Cumulative
 Photoroom background removal  5s        5s
 Gemini product analysis       8s        13s
 Prompt building (CPU)         <1s       14s
-Imagen 3 × 6 (PARALLEL)       40s       54s
+gemini 2.5 flash image (PARALLEL)       40s       54s
 Caption gen (PARALLEL w/ img) 0s extra  54s  ← fires simultaneously
 Response transfer             3s        57s
 Client ZIP assembly           3s        60s  ← on client, not server
@@ -75,7 +75,7 @@ const [imageResults, captionResults] = await Promise.all([
 ```ts
 export async function generateImage(prompt: ImagePrompt): Promise<string> {
   const model = vertexAI.getImageGenerationModel({
-    model: 'imagen-3.0-generate-001',
+    model: 'gemini-2.5-flash-image',
   })
 
   const response = await model.generateImages({

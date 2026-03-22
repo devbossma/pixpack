@@ -104,7 +104,7 @@ export async function generatePack(input: GenerateInput): Promise<GeneratedPack>
     scenesWithCopy.map((scene, index) => ({
       task: () => retryOnRateLimit(
         () => generateSingleImage(ai, scene, productBase64, productMimeType, index, userConfig),
-        { maxAttempts: 2, backoffMs: 20_000, label: `scene-${index}(${scene.platform})` },
+        { maxAttempts: 4, backoffMs: 20_000, label: `scene-${index}(${scene.platform})` },
       ),
       preGapMs: PRE_IMAGE_GAP_MS[index] ?? DEFAULT_GAP_MS,
       label: `image ${index + 1}/${creativeJson.scenes.length} (${scene.platform})`,

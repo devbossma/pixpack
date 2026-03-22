@@ -80,3 +80,5 @@ temp/
 # ─── Scripts that might contain secrets ──────────────────────────────────────
 scripts/test-*.ts
 scripts/test-*.js
+code-snipet/
+

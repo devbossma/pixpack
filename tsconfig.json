@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-  ],
+, "code-snipet/gemini-3.1-flash-image-preview.js"  ],
   "exclude": ["node_modules"]
 }
