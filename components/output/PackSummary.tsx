@@ -1,34 +1,37 @@
 'use client'
 
 import type { GeneratedPack } from '@/types'
+import { PLATFORM_SPECS } from '@/lib/platforms'
 
 export function PackSummary({ pack }: { pack: GeneratedPack }) {
   const successfulImages = pack.images.filter(i => i.status === 'done')
   const imageCount = successfulImages.length
   const adVariants = imageCount * 3
-  const bestTime = pack.postingSchedule[0]
-    ? `${pack.postingSchedule[0].bestDay} ${pack.postingSchedule[0].bestTime}`
-    : '—'
+
+  const spec = PLATFORM_SPECS[pack.platform as keyof typeof PLATFORM_SPECS]
+  const platformName = spec?.name ?? pack.platform
+  const market = pack.audience.country ?? 'Global'
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <MetricCard
-        label="Avg Score"
-        value={pack.totalScore.toFixed(1)}
+        label="Platform"
+        value={platformName}
         accent
+        small
       />
       <MetricCard
-        label="Images"
+        label="Market"
+        value={market}
+        small
+      />
+      <MetricCard
+        label="Variations"
         value={imageCount.toString()}
       />
       <MetricCard
-        label="Ad Variants"
+        label="Ad Copies"
         value={adVariants.toString()}
-      />
-      <MetricCard
-        label="Best Time"
-        value={bestTime}
-        small
       />
     </div>
   )

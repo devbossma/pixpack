@@ -160,7 +160,6 @@ export function DownloadGateModal({ pack, onClose }: DownloadGateModalProps) {
                 {[
                   `${imageCount} images`,
                   `${imageCount * 3} ad variants`,
-                  'Shopify listing',
                   '24h link',
                 ].map(label => (
                   <span

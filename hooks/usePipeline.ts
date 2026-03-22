@@ -26,12 +26,11 @@ export function usePipeline() {
       uploadState.status === 'ready' ? uploadState.base64 : '',
       config.productHint || '',
       config.regionId || '',
-      config.ageRanges.join(','),
+      config.ageRange || '',
       config.gender || '',
       config.interest || '',
       config.language || '',
-      config.platforms.join(','),
-      config.angles.join(',')
+      config.platform || ''
     ]
     return components.join('|')
   }, [uploadState, config])

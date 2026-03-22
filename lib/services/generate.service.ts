@@ -1,63 +1,49 @@
 /**
  * lib/services/generate.service.ts
  *
- * Two-stage generation pipeline:
- *   Stage 1 - Creative Director:  gemini-2.5-flash       → scene descriptions + shopify data
- *   Stage 2 - Ad Copy Writer:     gemini-2.5-flash       → full-length platform copy (16k tokens)
- *   Stage 3 - Image Generator:    gemini-2.5-flash-image → product placed in scene
+ * NEW MODEL (v2) — single platform, 4 A/B test variations:
  *
- * Rate-limit strategy:
- * -------------------
- * From observed quota behavior: the free-tier RPM for gemini-2.5-flash-image
- * allows roughly 2 requests to succeed before the quota window needs to recover.
- * Each image takes ~12-15s to generate.
+ *   Stage 1  gemini-2.5-flash        → 4 scene descriptions for chosen platform
+ *   Stage 2  gemini-2.5-flash        → ad copy for all 4 variations
+ *   Stage 3  gemini-2.5-flash-image  → 4 images, one per variation
  *
- * Rather than retrying after a 429 (which adds 15-30s of dead wait time),
- * we use an ADAPTIVE PRE-EMPTIVE GAP:
- *   - Images 0 and 1: no gap or short gap (quota is fresh)
- *   - Images 2+: 20s gap before starting (lets quota recover proactively)
+ * Timing budget (Vercel Hobby 180s limit):
+ *   Stage 1+2:  ~32s
+ *   Image 1:     ~8s  (no gap — fresh quota)
+ *   Image 2:     ~8s  (no gap — still in window)
+ *   Image 3:    15s gap + 8s = 23s
+ *   Image 4:    15s gap + 8s = 23s
+ *   Total:      ~94s  — 86s inside limit, retry budget available
  *
- * This eliminates retries in the happy path. Retries are kept as a safety net
- * for unexpected 429s (e.g. concurrent users sharing the same GCP project).
- *
- * Expected timing for 6 images (no retries):
- *   t=0s   image 0 starts  (~14s)
- *   t=14s  image 0 done, no gap
- *   t=14s  image 1 starts  (~14s)
- *   t=28s  image 1 done, 20s gap
- *   t=48s  image 2 starts  (~14s)
- *   t=62s  image 2 done, 20s gap
- *   t=82s  image 3 starts  (~14s)
- *   t=96s  image 3 done, 20s gap
- *   t=116s image 4 starts  (~14s) -- tight, but inside the 120s limit
- *
- * For users who want all 6 images reliably, increase maxDuration to 180s
- * in the route handler, or advise limiting platforms to 4.
+ * Each image is streamed to the client via SSE as soon as it completes.
  */
 
 import { Modality } from '@google/genai'
 import { createVertexClient } from '../vertex-client'
 import { retryOnRateLimit, delay } from '../concurrency'
 import { buildCreativeDirectorPrompt } from '../prompts/creative-director.prompt'
-import { buildImageGenerationPrompt } from '../prompts/image-generation.prompt'
 import { buildAdCopyPrompt } from '../prompts/ad-copy.prompt'
+import { buildImageGenerationPrompt } from '../prompts/image-generation.prompt'
 import type {
   CreativeJson, SceneLayout, Scene, AdCopies,
   GeneratedImage, GeneratedPack,
   UserConfig, ProductProfile,
 } from '../types'
 
-// Gap in ms to wait before each image index.
-// Index 0: no wait (fresh quota)
-// Index 1: short wait (still in the free window)
-// Index 2+: long wait so quota has time to recover
-const PRE_IMAGE_GAP_MS: Record<number, number> = {
-  0: 0,
-  1: 0,
-}
-const DEFAULT_GAP_MS = 22_000  // images 2, 3, 4, 5...
+// ─── Timing ───────────────────────────────────────────────────────────────────
 
-// Platform -> aspect ratio
+// ─── Timing ───────────────────────────────────────────────────────────────────
+
+const PRE_IMAGE_GAP_MS: Record<number, number> = {
+  0: 0,      // image 1: fire immediately — assumes fresh quota
+  1: 15_000, // image 2: always wait 15s to avoid hitting RPM limit
+  2: 15_000, // image 3: wait 15s
+  3: 15_000, // image 4: wait 15s
+}
+const DEFAULT_GAP_MS = 15_000
+
+// ─── Aspect ratios ────────────────────────────────────────────────────────────
+
 const ASPECT_RATIOS: Record<string, string> = {
   instagram_post: '1:1',
   instagram_story: '9:16',
@@ -67,7 +53,7 @@ const ASPECT_RATIOS: Record<string, string> = {
   web_banner: '16:9',
 }
 
-// ---- Public entry point -----------------------------------------------------
+// ─── Streaming callbacks ──────────────────────────────────────────────────────
 
 export interface GenerateCallbacks {
   onStage?: (stage: number, message: string) => void
@@ -80,6 +66,8 @@ export interface GenerateInput {
   marketingLanguage: string
 }
 
+// ─── Public entry point ───────────────────────────────────────────────────────
+
 export async function generatePack(
   input: GenerateInput,
   callbacks: GenerateCallbacks = {},
@@ -88,101 +76,93 @@ export async function generatePack(
   const { onStage, onImage } = callbacks
   const ai = createVertexClient()
 
-  // Stage 1 - Creative Director
-  console.log('[generate] Stage 1: running Creative Director...')
-  onStage?.(1, 'Analysing product and building scene concepts...')
-  const creativeJson = await runCreativeDirector(ai, productProfile, userConfig, marketingLanguage)
-  console.log(`[generate] Stage 1 done - ${creativeJson.scenes.length} scenes`)
+  const platform = userConfig.platform ?? 'instagram_post'
+  const language = marketingLanguage === 'auto'
+    ? 'the primary language of the target market'
+    : marketingLanguage
 
-  // Fetch product image once, reuse for all image calls
+  // ── Stage 1: Creative Director → 4 scene variations ──────────────────────
+  console.log(`[generate] Stage 1: Creative Director for ${platform}...`)
+  onStage?.(1, 'Building 4 creative concepts...')
+
+  const creativeJson = await runCreativeDirector(ai, productProfile, userConfig, language)
+  console.log(`[generate] Stage 1 done — ${creativeJson.variations.length} variations`)
+
+  // ── Fetch product image ───────────────────────────────────────────────────
   console.log('[generate] Fetching product image...')
   const { productBase64, productMimeType } = await fetchProductImage(productProfile.extractedImageUrl)
-  console.log(`[generate] Image ready - ${productMimeType}, ~${Math.round(productBase64.length / 1024)}KB`)
+  console.log(`[generate] Image ready — ${productMimeType}, ~${Math.round(productBase64.length / 1024)}KB`)
 
-  // Stage 2 - Generate full-length ad copy
-  console.log('[generate] Stage 2: generating full-length ad copy...')
-  onStage?.(2, 'Writing ad copy for each platform...')
-  const scenesWithCopy: Scene[] = await generateAdCopy(
-    ai, creativeJson.scenes, productProfile, userConfig, marketingLanguage
+  // ── Stage 2: Ad copy for all 4 variations ─────────────────────────────────
+  console.log('[generate] Stage 2: generating ad copy...')
+  onStage?.(2, 'Writing ad copy for each variation...')
+
+  const scenesWithCopy = await generateAdCopy(
+    ai, creativeJson.variations, productProfile, userConfig, language
   )
-  console.log('[generate] Stage 2 done - ad copy ready')
+  console.log('[generate] Stage 2 done — copy ready')
 
-  // Stage 3 - Sequential image generation — stream each image as it completes
+  // ── Stage 3: Generate 4 images sequentially, stream each one ─────────────
   console.log(`[generate] Stage 3: generating ${scenesWithCopy.length} images...`)
-  onStage?.(3, `Generating ${scenesWithCopy.length} images...`)
+  onStage?.(3, `Generating ${scenesWithCopy.length} image variations...`)
 
   const images: GeneratedImage[] = []
 
   for (let index = 0; index < scenesWithCopy.length; index++) {
     const scene = scenesWithCopy[index]
-    const preGapMs = PRE_IMAGE_GAP_MS[index] ?? DEFAULT_GAP_MS
-    const label = `image ${index + 1}/${scenesWithCopy.length} (${scene.platform})`
+    const preGapMs = (index > 0) ? 20_000 : 0 // Wait 20s between images for quota
+    const label = `image ${index + 1}/${scenesWithCopy.length} (${scene.angle})`
 
     if (preGapMs > 0) {
-      console.log(`[stage2] Waiting ${preGapMs / 1000}s before ${label}...`)
+      console.log(`[stage3] Waiting ${preGapMs / 1000}s before ${label}...`)
       await delay(preGapMs)
     }
 
-    console.log(`[stage2] Starting ${label}`)
+    console.log(`[stage3] Starting ${label}`)
 
     let image: GeneratedImage
     try {
       image = await retryOnRateLimit(
-        () => generateSingleImage(ai, scene, productBase64, productMimeType, index, userConfig),
-        { maxAttempts: 2, backoffMs: 20_000, label: `scene-${index}(${scene.platform})` },
+        () => generateSingleImage(ai, scene, platform, productBase64, productMimeType, userConfig),
+        {
+          maxAttempts: 3,
+          backoffMs: 30_000, // Longer backoff for RPM
+          label: `variation-${scene.variation}(${scene.angle})`
+        },
       )
-      console.log(`[stage2] Scene ${index} (${scene.platform}) OK`)
+      console.log(`[stage3] Variation ${scene.variation} (${scene.angle}) OK`)
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : 'Image generation failed'
-      console.error(`[generate] Scene ${index} (${scene.platform}) permanently failed:`, reason)
-      image = buildErrorCard(index, scene.platform, reason)
+      const is429 = /429|quota|RESOURCE_EXHAUSTED/i.test(reason)
+      console.warn(`[stage3] Variation ${scene.variation} failed${is429 ? ' (quota)' : ''}:`, reason)
+      image = buildErrorCard(scene, platform, reason)
     }
 
     images.push(image)
-
-    // Stream this image to the client immediately — don't wait for the rest
+    // Stream this image to the client immediately
     onImage?.(image)
   }
 
   const successCount = images.filter(img => img.status === 'done').length
-  console.log(`[generate] Stage 3 done - ${successCount}/${images.length} images OK`)
+  console.log(`[generate] Done — ${successCount}/${images.length} images OK`)
 
-  return assemblePack(images, creativeJson, scenesWithCopy, userConfig)
-}
-
-// ---- Sequential runner with per-image pre-gap --------------------------------
-
-interface ImageTask {
-  task: () => Promise<GeneratedImage>
-  preGapMs: number
-  label: string
-}
-
-async function sequentialImages(tasks: ImageTask[]): Promise<PromiseSettledResult<GeneratedImage>[]> {
-  const results: PromiseSettledResult<GeneratedImage>[] = []
-
-  for (const { task, preGapMs, label } of tasks) {
-    if (preGapMs > 0) {
-      console.log(`[stage2] Waiting ${preGapMs / 1000}s before ${label}...`)
-      await delay(preGapMs)
-    }
-    console.log(`[stage2] Starting ${label}`)
-    const result = await Promise.allSettled([task()])
-    results.push(result[0])
+  return {
+    id: crypto.randomUUID(),
+    platform,
+    images,
+    audience: userConfig,
+    generatedAt: new Date().toISOString(),
   }
-
-  return results
 }
 
-// ---- Stage 1: Creative Director ---------------------------------------------
+// ─── Stage 1: Creative Director ───────────────────────────────────────────────
 
 async function runCreativeDirector(
   ai: ReturnType<typeof createVertexClient>,
   productProfile: ProductProfile,
   userConfig: UserConfig,
-  marketingLanguage: string,
+  language: string,
 ): Promise<CreativeJson> {
-  const language = marketingLanguage === 'auto' ? 'the primary language of the target market' : marketingLanguage
   const prompt = buildCreativeDirectorPrompt(productProfile, userConfig, language)
 
   return retryOnRateLimit(
@@ -194,7 +174,7 @@ async function runCreativeDirector(
           responseMimeType: 'application/json',
           temperature: 0.7,
           topP: 0.95,
-          maxOutputTokens: 8192,
+          maxOutputTokens: 4096,
         },
       })
 
@@ -203,14 +183,14 @@ async function runCreativeDirector(
       const lastBrace = raw.lastIndexOf('}')
 
       if (firstBrace === -1 || lastBrace === -1) {
-        console.error('[stage1] No JSON braces found. Raw preview:', raw.slice(0, 400))
-        throw new Error('Creative Director returned no JSON object')
+        console.error('[stage1] No JSON found. Preview:', raw.slice(0, 300))
+        throw new Error('Creative Director returned no JSON')
       }
 
       const parsed = JSON.parse(raw.slice(firstBrace, lastBrace + 1)) as CreativeJson
 
-      if (!parsed.scenes?.length) {
-        throw new Error('Creative Director returned empty or missing scenes array')
+      if (!parsed.variations?.length) {
+        throw new Error('Creative Director returned empty variations')
       }
 
       return parsed
@@ -219,18 +199,85 @@ async function runCreativeDirector(
   )
 }
 
-// ---- Stage 2: Single image --------------------------------------------------
+// ─── Stage 2: Ad copy for all 4 variations ────────────────────────────────────
+
+async function generateAdCopy(
+  ai: ReturnType<typeof createVertexClient>,
+  variations: SceneLayout[],
+  productProfile: ProductProfile,
+  userConfig: UserConfig,
+  language: string,
+): Promise<Scene[]> {
+  const prompt = buildAdCopyPrompt({ productProfile, userConfig, variations, language })
+
+  return retryOnRateLimit(
+    async () => {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.8,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+        },
+      })
+
+      const raw = response.text ?? ''
+      const firstBracket = raw.indexOf('[')
+      const lastBracket = raw.lastIndexOf(']')
+
+      if (firstBracket === -1 || lastBracket === -1) {
+        throw new Error('Ad copy returned no JSON array')
+      }
+
+      const copyData = JSON.parse(raw.slice(firstBracket, lastBracket + 1)) as any[]
+
+      // Merge copy into scenes — robust matching for variation and keys
+      return variations.map(scene => {
+        // Match by variation ID or falling back to angle (allow string/number mismatch)
+        const copy = copyData.find(r => 
+          String(r.variation) === String(scene.variation) || 
+          String(r.angle).toLowerCase() === String(scene.angle).toLowerCase()
+        )
+        
+        const emptyAdCopy: AdCopies = { awareness: '', consideration: '', conversion: '' }
+        
+        if (!copy) {
+          console.warn(`[stage2] No ad copy found for variation ${scene.variation}. Using fallback.`)
+          return { ...scene, ad_copies: emptyAdCopy }
+        }
+
+        // Case-insensitive key extraction
+        const getVal = (keys: string[]) => {
+          const key = Object.keys(copy).find(k => keys.includes(k.toLowerCase()))
+          return key ? String(copy[key]) : ''
+        }
+
+        const ad_copies: AdCopies = {
+          awareness:     getVal(['awareness', 'awareness_copy']),
+          consideration: getVal(['consideration', 'consideration_copy']),
+          conversion:    getVal(['conversion', 'cta', 'conversion_copy']),
+        }
+
+        return { ...scene, ad_copies }
+      })
+    },
+    { maxAttempts: 2, backoffMs: 6000, label: 'ad-copy' },
+  )
+}
+
+// ─── Stage 3: Single image ────────────────────────────────────────────────────
 
 async function generateSingleImage(
   ai: ReturnType<typeof createVertexClient>,
   scene: Scene,
+  platform: string,
   productBase64: string,
   productMimeType: string,
-  index: number,
   userConfig?: UserConfig,
 ): Promise<GeneratedImage> {
-  const aspectRatio = ASPECT_RATIOS[scene.platform] ?? '1:1'
-
+  const aspectRatio = ASPECT_RATIOS[platform] ?? '1:1'
   const imagePrompt = buildImageGenerationPrompt(scene, aspectRatio, userConfig)
 
   const response = await ai.models.generateContent({
@@ -247,112 +294,41 @@ async function generateSingleImage(
     config: {
       responseModalities: [Modality.IMAGE, Modality.TEXT],
       imageConfig: { aspectRatio },
-      temperature: 1,
+      temperature: 0.7,
       topP: 0.95,
     },
   })
 
+  // Extract image from response parts
   const parts = response.candidates?.[0]?.content?.parts ?? []
-  const imagePart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'))
+  const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'))
 
   if (!imagePart?.inlineData?.data) {
-    const preview = JSON.stringify(parts.map((p: any) => ({
-      type: p.text ? 'text' : 'inlineData',
-      preview: p.text?.slice(0, 60) ?? p.inlineData?.mimeType,
-    })))
-    throw new Error(`No image returned for scene ${index} (${scene.platform}). Parts: ${preview}`)
+    const textPart = parts.find(p => p.text)
+    throw new Error(`No image in response. Model said: ${textPart?.text?.slice(0, 200) ?? 'nothing'}`)
   }
 
-  const outMime = imagePart.inlineData.mimeType ?? 'image/png'
-  const score = calcEngagementScore(index)
-
-  console.log(`[stage2] Scene ${index} (${scene.platform}) OK`)
+  const { data, mimeType } = imagePart.inlineData
+  const imageBase64 = `data:${mimeType ?? 'image/png'};base64,${data}`
 
   return {
-    id: `img_${index}_${Date.now()}`,
-    platform: scene.platform,
-    imageBase64: `data:${outMime};base64,${imagePart.inlineData.data}`,
-    caption: scene.ad_copies.awareness,
-    hashtags: ['#PixPack', `#${scene.platform.split('_')[0]}`],
-    adCopy: {
-      awareness: scene.ad_copies.awareness,
-      consideration: scene.ad_copies.consideration,
-      conversion: scene.ad_copies.conversion,
-    },
-    engagementScore: score,
+    id: `img_${scene.variation}_${Date.now()}`,
+    variation: scene.variation,
+    platform,
+    angle: scene.angle,
+    imageBase64,
+    adCopy: scene.ad_copies,
     status: 'done',
   }
 }
 
-// ---- Stage 2: Ad copy via gemini-2.5-flash ---------------------------------
-// Dedicated text-only call with 16k token budget so copy gets full room.
-// The Creative Director (Stage 1) only produces scene descriptions —
-// this call produces the full-length sales copy for each platform.
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function generateAdCopy(
-  ai: ReturnType<typeof createVertexClient>,
-  scenes: SceneLayout[],
-  productProfile: ProductProfile,
-  userConfig: UserConfig,
-  marketingLanguage: string,
-): Promise<Scene[]> {
-  const language = marketingLanguage === 'auto'
-    ? 'the primary language of the target market'
-    : marketingLanguage
-
-  const prompt = buildAdCopyPrompt({ productProfile, userConfig, scenes, language })
-
-  const copyData = await retryOnRateLimit(
-    async () => {
-      const res = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.8,
-          topP: 0.95,
-          maxOutputTokens: 16384,
-        },
-      })
-
-      const raw = res.text ?? ''
-      const firstBracket = raw.indexOf('[')
-      const lastBracket = raw.lastIndexOf(']')
-
-      if (firstBracket === -1 || lastBracket === -1) {
-        console.error('[ad-copy] No JSON array found. Raw preview:', raw.slice(0, 400))
-        throw new Error('Ad copy generation returned no JSON array')
-      }
-
-      return JSON.parse(raw.slice(firstBracket, lastBracket + 1)) as Array<{
-        platform: string
-        awareness: string
-        consideration: string
-        conversion: string
-      }>
-    },
-    { maxAttempts: 2, backoffMs: 6000, label: 'ad-copy-generation' },
-  )
-
-  // Merge copy back into scenes — graceful fallback if a platform is missing
-  return scenes.map(scene => {
-    const copy = copyData.find(r => r.platform === scene.platform)
-    return {
-      ...scene,
-      ad_copies: {
-        awareness: copy?.awareness ?? '',
-        consideration: copy?.consideration ?? '',
-        conversion: copy?.conversion ?? '',
-      },
-    }
-  })
-}
-
-// ---- Helpers ----------------------------------------------------------------
-
-async function fetchProductImage(url: string): Promise<{ productBase64: string; productMimeType: string }> {
+async function fetchProductImage(
+  url: string,
+): Promise<{ productBase64: string; productMimeType: string }> {
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
-  if (!res.ok) throw new Error(`Failed to fetch product image: ${res.status} ${res.statusText}`)
+  if (!res.ok) throw new Error(`Failed to fetch product image: ${res.status}`)
 
   const contentType = res.headers.get('content-type') ?? 'image/png'
   const productMimeType = contentType.startsWith('image/') ? contentType.split(';')[0] : 'image/png'
@@ -361,64 +337,20 @@ async function fetchProductImage(url: string): Promise<{ productBase64: string; 
   return { productBase64, productMimeType }
 }
 
-function calcEngagementScore(index: number): GeneratedImage['engagementScore'] {
-  const base = 6.8 + (index % 3) * 0.5
-  const score = Number(Math.min(base + Math.random() * 0.9, 9.8).toFixed(1))
-  const label = score >= 8.5 ? 'Excellent' : score >= 7.0 ? 'Good' : score >= 5.0 ? 'Average' : 'Poor'
-
-  return {
-    score,
-    label,
-    reason: `${label} product-scene integration and cultural fit for this platform.`,
-    tip: 'Post during peak hours in your target market timezone.',
-  }
-}
-
-function buildErrorCard(index: number, platform: string, reason: string): GeneratedImage {
+function buildErrorCard(
+  scene: SceneLayout,
+  platform: string,
+  reason: string,
+): GeneratedImage {
   const emptyAdCopy: AdCopies = { awareness: '', consideration: '', conversion: '' }
   return {
-    id: `img_${index}_failed`,
+    id: `img_err_${scene.variation}_${Date.now()}`,
+    variation: scene.variation,
     platform,
+    angle: scene.angle,
     imageBase64: null,
-    caption: '',
-    hashtags: [],
     adCopy: emptyAdCopy,
-    engagementScore: { score: 0, label: 'Poor', reason: '', tip: '' },
     status: 'error',
     error: reason,
-  }
-}
-
-function assemblePack(
-  images: GeneratedImage[],
-  creative: CreativeJson,
-  scenesWithCopy: Scene[],
-  userConfig: UserConfig,
-): GeneratedPack {
-  const successful = images.filter(img => img.status === 'done')
-  const totalScore = successful.length
-    ? Number((successful.reduce((sum, img) => sum + img.engagementScore.score, 0) / successful.length).toFixed(1))
-    : 0
-
-  return {
-    id: crypto.randomUUID(),
-    images,
-    productDescription: {
-      title: creative.shopify_data.title,
-      subtitle: creative.shopify_data.tagline,
-      bulletFeatures: creative.shopify_data.description.split('.').map(s => s.trim()).filter(s => s.length > 3),
-      seoMetaTitle: creative.shopify_data.seo_meta_title,
-      seoMetaDescription: creative.shopify_data.seo_meta_description,
-    },
-    postingSchedule: scenesWithCopy.map(scene => ({
-      platform: scene.platform,
-      bestDay: creative.posting_schedule.best_day,
-      bestTime: creative.posting_schedule.best_time,
-      timezone: 'Local time',
-      reason: creative.posting_schedule.reasoning,
-    })),
-    audience: userConfig,
-    totalScore,
-    generatedAt: new Date().toISOString(),
   }
 }

@@ -18,7 +18,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import JSZip from 'jszip'
 import { verifyDownloadToken } from '@/lib/services/token.service'
-import type { GeneratedImage, ProductDescription, PostingSlot } from '@/lib/types'
+import type { GeneratedImage } from '@/lib/types'
 
 export const maxDuration = 30
 
@@ -64,71 +64,72 @@ export async function GET(request: NextRequest) {
     // 3. Fetch pack
     const { data: pack, error: packError } = await supabase
       .from('packs')
-      .select('images_data, product_description, posting_schedule, audience, total_score')
+      .select('images_data, platform, audience')
       .eq('id', payload.packId)
       .single()
 
     if (packError || !pack) {
+      console.error('[download] Pack fetch failed:', { packId: payload.packId, error: packError?.message })
       return htmlError('Pack not found or has expired. Please generate a new one.', 404)
     }
 
-    const images = pack.images_data as GeneratedImage[]
-    const desc = pack.product_description as ProductDescription
-    const schedule = pack.posting_schedule as PostingSlot[]
+    const images: GeneratedImage[] = pack.images_data
 
     // 4. Build ZIP
     const zip = new JSZip()
     const imagesFolder = zip.folder('images')!
 
-    // Images
+    // Images — variation-A-lifestyle.png etc.
+    const VARIATION_LETTERS = ['A', 'B', 'C', 'D']
     for (const image of images) {
       if (image.status !== 'done' || !image.imageBase64) continue
       const base64 = image.imageBase64.replace(/^data:image\/\w+;base64,/, '')
       const ext = image.imageBase64.startsWith('data:image/jpeg') ? 'jpg' : 'png'
-      imagesFolder.file(`${image.platform}.${ext}`, base64, { base64: true })
+      const letter = VARIATION_LETTERS[image.variation - 1] ?? String(image.variation)
+      imagesFolder.file(`variation-${letter}-${image.angle}.${ext}`, base64, { base64: true })
     }
 
     // Ad copy
-    const adLines: string[] = ['PIXPACK — AD COPY VARIANTS', '='.repeat(50), '']
+    const adLines: string[] = [
+      'PIXPACK — AD COPY',
+      '='.repeat(50),
+      `Platform: ${(pack.platform ?? '').replace(/_/g, ' ').toUpperCase()}`,
+      '',
+    ]
     for (const image of images) {
       if (image.status !== 'done') continue
-      adLines.push(`PLATFORM: ${image.platform.replace(/_/g, ' ').toUpperCase()}`)
-      adLines.push('-'.repeat(30))
-      adLines.push(`AWARENESS:\n${image.adCopy.awareness}\n`)
+      const letter = VARIATION_LETTERS[image.variation - 1] ?? String(image.variation)
+      adLines.push('─'.repeat(40))
+      adLines.push(`VARIATION ${letter} — ${image.angle.toUpperCase()}`)
+      adLines.push('─'.repeat(40))
+      adLines.push(`\nAWARENESS:\n${image.adCopy.awareness}\n`)
       adLines.push(`CONSIDERATION:\n${image.adCopy.consideration}\n`)
-      adLines.push(`CONVERSION:\n${image.adCopy.conversion}\n\n`)
+      adLines.push(`CONVERSION:\n${image.adCopy.conversion}\n`)
     }
     zip.file('ad_copy.txt', adLines.join('\n'))
 
-    // Shopify listing
-    zip.file('shopify_listing.txt', [
-      'PIXPACK — SHOPIFY PRODUCT LISTING', '='.repeat(50), '',
-      `TITLE:\n${desc.title}`, '',
-      `TAGLINE:\n${desc.subtitle}`, '',
-      'DESCRIPTION BULLETS:',
-      ...desc.bulletFeatures.map(f => `• ${f}`), '',
-      `SEO META TITLE:\n${desc.seoMetaTitle}`, '',
-      `SEO META DESCRIPTION:\n${desc.seoMetaDescription}`,
-    ].join('\n'))
-
-    // Posting schedule
-    const schedLines: string[] = ['PIXPACK — POSTING SCHEDULE', '='.repeat(50), '']
-    for (const slot of schedule) {
-      schedLines.push(`${slot.platform.replace(/_/g, ' ').toUpperCase()}`)
-      schedLines.push(`  Best day:  ${slot.bestDay}`)
-      schedLines.push(`  Best time: ${slot.bestTime} (${slot.timezone})`)
-      schedLines.push(`  Why:       ${slot.reason}\n`)
-    }
-    zip.file('posting_schedule.txt', schedLines.join('\n'))
-
     // README
+    const successCount = images.filter(i => i.status === 'done').length
+    const platformLabel = (pack.platform ?? 'unknown').replace(/_/g, ' ').toUpperCase()
     zip.file('README.txt', [
-      'Your PixPack Content Pack', '='.repeat(50), '',
-      'FILES:',
-      '  images/              Platform-native images',
-      '  ad_copy.txt          3 ad variants per platform',
-      '  shopify_listing.txt  Ready-to-paste product listing',
-      '  posting_schedule.txt Best posting times per platform',
+      'PIXPACK — A/B TEST VARIATIONS', '='.repeat(40), '',
+      `Platform:   ${platformLabel}`,
+      `Variations: ${successCount} generated`,
+      `Generated:  ${new Date().toLocaleString()}`,
+      '',
+      'FILES',
+      '─'.repeat(40),
+      'images/',
+      '  variation-A-lifestyle.ext   Candid lifestyle scene',
+      '  variation-B-hero.ext        Studio hero shot',
+      '  variation-C-context.ext     Aspirational context',
+      '  variation-D-closeup.ext     Material detail macro',
+      'ad_copy.txt                   Awareness / Consideration / Conversion per variation',
+      '',
+      'HOW TO USE',
+      '─'.repeat(40),
+      'Upload all 4 to your ads manager, split budget equally,',
+      'run for 7–14 days, keep the winner.',
       '',
       `Generated by PixPack — ${process.env.NEXT_PUBLIC_SITE_URL}`,
     ].join('\n'))
@@ -143,12 +144,14 @@ export async function GET(request: NextRequest) {
     const zipBuffer = await zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' })
     const filename = `pixpack_${new Date().toISOString().slice(0, 10)}.zip`
 
-    return new NextResponse(zipBuffer as any, {
+    const blob = new Blob([zipBuffer] as unknown as BlobPart[], { type: 'application/zip' })
+
+    return new NextResponse(blob as unknown as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Length': zipBuffer.byteLength.toString(),
+        'Content-Length': blob.size.toString(),
         'Cache-Control': 'no-store',
       },
     })

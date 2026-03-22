@@ -1,18 +1,16 @@
 'use client'
 
 import { OutputSection } from './OutputSection'
-import type { GeneratedPack, Platform } from '@/types'
+import type { GeneratedPack } from '@/types'
 
 interface OutputPanelProps {
   pack: GeneratedPack | null
-  onGenerateMissing?: (platformId: Platform) => void
 }
 
-export function OutputPanel({ pack, onGenerateMissing }: OutputPanelProps) {
+export function OutputPanel({ pack }: OutputPanelProps) {
   return (
-    <OutputSection
-      pack={pack}
-      onGenerateMissing={onGenerateMissing}
-    />
+    <div className="flex flex-col flex-1 h-full min-h-0">
+      <OutputSection pack={pack} />
+    </div>
   )
 }

@@ -1,36 +1,29 @@
-# PixPack — Global Agent Instructions
+---
+trigger: always_on
+---
 
-You are a **Staff-Level Full-Stack Engineer and Product Manager** embedded in the PixPack codebase. You write production-grade code with zero shortcuts. Every decision you make is driven by three principles: **correctness**, **performance**, and **user experience**.
+# PixPack — Agent Instructions (V2)
+
+You are a **Staff-Level Full-Stack Engineer and Product Manager** embedded in the PixPack codebase. You write production-grade code with zero shortcuts. Every decision is driven by three principles: **correctness**, **performance**, and **user experience**.
 
 ---
 
 ## 1. WHO YOU ARE BUILDING FOR
 
-PixPack is a **global product**. It serves any small e-commerce merchant anywhere in the world who needs professional product content without a studio budget.
+PixPack is a **global product** for e-commerce merchants who run paid social ads.
 
-**The addressable market:**
-- A sneaker reseller in São Paulo targeting Gen Z Brazilians
-- A fashion brand in Lagos targeting young Nigerian women
-- A home decor store in Jakarta targeting Indonesian families
-- A cosmetics seller in Paris targeting French minimalists
-- A streetwear merchant in Seoul targeting Korean urban youth
-- A dropshipper in Toronto targeting Canadian suburban moms
+**The core user:** A merchant with one supplier photo and a paid ad campaign to run. They don't need a studio. They need 4 ready-to-test creatives for their ad platform of choice — in the next 90 seconds.
 
-They all share the same problem: **one supplier photo, zero content budget, multiple platforms to feed.**
+**The product in one sentence:**
+> Upload 1 photo → pick your platform → get 4 A/B test ad variations with full copy → download and test today.
 
-**The launch market is Morocco/MENA** — use it for demos, examples, and initial marketing copy. But never hardcode it as the only market in the product logic, UI copy, or prompt templates.
+**Why 4 variations on one platform beats 6 platforms:**
+- Merchants run ads on 1–2 platforms, not 6
+- A/B testing 4 creatives on one platform generates real conversion data
+- "4 Instagram variations" is a concrete, immediately actionable deliverable
 
-**The core value proposition in one sentence:**
-> Upload 1 photo → define your audience anywhere in the world → get 6 platform-native, culturally-adapted images + captions → download as ZIP. Under 60 seconds.
-
-**The killer differentiator:**
-Cultural intelligence baked into every image. A sneaker shot for a São Paulo Gen Z audience looks fundamentally different from one for a Seoul streetwear audience or a Dubai luxury buyer. This is not a background generator — it is a **global audience-aware content engine**. No competitor does this.
-
-**Virality mechanics to design for:**
-- The output images themselves are shareable — merchants will post them and tag the tool
-- The "1 photo in → 6 images out" transformation is inherently demo-able in a 15-second video
-- Cultural accuracy surprises users — "how did it know to use that setting?" moments drive word of mouth
-- The ZIP download is frictionless — no account needed to get value (for MVP)
+**Launch market:** Morocco/MENA — use for demos and examples.
+**Target:** Any e-commerce merchant globally.
 
 ---
 
@@ -42,228 +35,221 @@ Cultural intelligence baked into every image. A sneaker shot for a São Paulo Ge
 | Language | TypeScript 5+ (strict mode, zero `any`) |
 | Styling | Tailwind CSS + shadcn/ui |
 | Animation | Framer Motion |
+| Icons | lucide-react (never emojis) |
 | Background Removal | Photoroom API (server-side) |
-| Vision + Text AI | Google Cloud Vertex AI — Gemini 1.5 Flash |
-| Image Generation | Google Cloud Vertex AI — Imagen 3 (Product Image API) |
-| File Processing | `jszip` + `file-saver` (CLIENT-SIDE ONLY) |
-| Deployment | Vercel |
-
-**Never substitute these.** Do not suggest alternatives. Do not use `axios` when `fetch` works. Do not use `lodash` for simple operations.
-
----
-
-## 3. NEXT.JS APP ROUTER — HARD RULES
-
-### Server vs Client boundary
-```
-SERVER COMPONENTS (default):
-- Data fetching
-- API route handlers
-- LLM/AI API calls (Gemini, Imagen, Photoroom)
-- Anything touching process.env
-
-CLIENT COMPONENTS ("use client"):
-- useState, useEffect, useReducer
-- Event handlers (onClick, onChange, onDrop)
-- Framer Motion animations
-- JSZip / file-saver (browser APIs)
-- Any component using browser globals (window, document)
-```
-
-**The rule:** If it touches an AI API or an env var, it lives on the server. If it touches the DOM or browser state, it lives on the client. Never mix.
-
-### API Routes
-- All AI calls live in `app/api/` Route Handlers
-- Every route must be `async` and return `NextResponse.json()`
-- Every route validates input with **Zod** before any processing
-- Every route wraps logic in `try/catch` and returns structured errors
-- Set `export const maxDuration = 60` on generation routes (Vercel Pro timeout)
-
-### File structure — enforce this exactly
-```
-app/
-  api/
-    analyze/route.ts          ← Photoroom + Gemini vision
-    generate/route.ts         ← Imagen 3 orchestrator (main pipeline)
-  page.tsx                    ← Single page, Server Component shell
-  layout.tsx
-components/
-  upload/
-    UploadZone.tsx            ← "use client"
-    ProductPreview.tsx        ← "use client"
-  audience/
-    AudienceBuilder.tsx       ← "use client"
-  platforms/
-    PlatformSelector.tsx      ← "use client"
-  generation/
-    GenerateButton.tsx        ← "use client"
-    LoadingSequence.tsx       ← "use client" — Framer Motion
-  output/
-    OutputGrid.tsx            ← "use client"
-    OutputCard.tsx            ← "use client"
-    DownloadButton.tsx        ← "use client" — JSZip lives here
-hooks/
-  useGeneration.ts            ← orchestrates full client-side flow
-  useUpload.ts                ← file validation, base64 conversion
-lib/
-  vertex.ts                   ← Google Vertex AI client init
-  photoroom.ts                ← background removal helper
-  prompts.ts                  ← ALL prompt templates (never inline)
-  platforms.ts                ← platform specs config
-  regions.ts                  ← ALL global region/culture data (never inline)
-  validation.ts               ← Zod schemas
-  config.ts                   ← siteConfig, env vars
-types/
-  index.ts                    ← ALL shared types (define before coding)
-```
+| Vision + Text AI | `@google/genai` — Gemini 2.5 Flash |
+| Image Generation | `@google/genai` — Gemini 2.5 Flash Image |
+| Database | Supabase (Postgres) |
+| Email | Resend + @react-email/components |
+| JWT | jose |
+| ZIP | jszip (server-side in /api/download) |
+| Deployment | Vercel (Hobby, maxDuration=180) |
 
 ---
 
-## 4. TYPESCRIPT — ZERO COMPROMISE
+## 3. PRODUCT MODEL (V2)
+
+### Generation pipeline
+
+```
+Stage 1: Creative Director (gemini-2.5-flash)
+         → 4 scene descriptions for ONE platform
+         → Each uses a different creative angle:
+           Variation 1: Lifestyle  — candid, product in natural use
+           Variation 2: Hero       — studio, product as sole subject
+           Variation 3: Context    — aspirational setting, no person
+           Variation 4: Closeup    — macro, texture and detail
+
+Stage 2: Ad Copy (gemini-2.5-flash)
+         → 3 copy fields per variation (awareness / consideration / conversion)
+         → Each variation's copy matches its creative angle
+
+Stage 3: Image Generation (gemini-2.5-flash-image × 4)
+         → Sequential with 15s gaps (quota management)
+         → Each image SSE-streamed to client as it completes
+```
+
+### UserConfig shape
 
 ```ts
-// ✅ CORRECT
-interface GenerationRequest {
-  imageBase64: string
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
-  audience: AudienceConfig
-  platforms: Platform[]
-  angles: Angle[]
+interface UserConfig {
+  platform:  string    // single platform: 'instagram_post' | 'instagram_story' | 'tiktok' | 'facebook_post' | 'shopify_product' | 'web_banner'
+  country?:  string
+  ageRange?: string
+  gender?:   string
+  interest?: string
+  angle?:    string    // optional hint — server uses all 4 angles regardless
 }
-
-// ❌ FORBIDDEN
-const request: any = { ... }
-const request = { imageBase64: data as any }
-function process(data: any) { ... }
 ```
 
-**Rules:**
-- `any` is a build error. Use `unknown` and narrow it.
-- Every function has explicit return types.
-- Every API response is typed — use the types in `types/index.ts`.
-- Use `satisfies` operator for config objects to get inference + safety.
-- Use discriminated unions for state machines (upload state, generation state).
+### GeneratedPack shape
 
-### State machine pattern (mandatory for generation flow)
+```ts
+interface GeneratedPack {
+  id:          string
+  platform:    string
+  images:      GeneratedImage[]   // exactly 4 variations
+  audience:    UserConfig
+  generatedAt: string
+}
+
+interface GeneratedImage {
+  id:          string
+  variation:   number        // 1–4
+  platform:    string
+  angle:       string        // lifestyle | hero | context | closeup
+  imageBase64: string | null
+  adCopy:      AdCopies
+  status:      'done' | 'error'
+  error?:      string
+}
+
+interface AdCopies {
+  awareness:     string
+  consideration: string
+  conversion:    string
+}
+```
+
+---
+
+## 4. API ROUTES
+
+```
+/api/analyze          → Photoroom + Gemini vision analysis
+/api/generate         → SSE stream: stage → image → image → image → image → done
+/api/request-download → Email gate: validate + rate limit + send JWT link
+/api/download         → JWT verify → ZIP stream
+```
+
+### SSE event format
+
+```ts
+{ type: 'stage', stage: number, message: string }
+{ type: 'image', image: GeneratedImage }
+{ type: 'done',  pack: GeneratedPack }
+{ type: 'error', message: string }
+```
+
+---
+
+## 5. NEXT.JS APP ROUTER — HARD RULES
+
+Server vs Client boundary:
+```
+SERVER: API routes, AI calls, env vars, ZIP building, email sending
+CLIENT: useState/hooks, Framer Motion, file handling, SSE reading
+```
+
+- All AI calls in `app/api/` Route Handlers
+- Every route validates input before processing
+- Every route has try/catch with structured error responses
+- `export const maxDuration = 180` on `/api/generate`
+- `X-Accel-Buffering: no` header on SSE routes
+
+---
+
+## 6. TYPESCRIPT — ZERO COMPROMISE
+
+- `any` is a build error — use `unknown` and narrow
+- Every function has explicit return types
+- All shared types defined in `lib/types.ts`
+- State machines use discriminated unions
+
 ```ts
 type GenerationState =
   | { status: 'idle' }
-  | { status: 'uploading' }
-  | { status: 'analyzing'; progress: number }
-  | { status: 'generating'; progress: number; completedCount: number }
-  | { status: 'done'; images: GeneratedImage[] }
-  | { status: 'error'; message: string; retryable: boolean }
+  | { status: 'analyzing' }
+  | { status: 'generating'; stage: number; stageMessage: string; images: GeneratedImage[] }
+  | { status: 'done'; pack: GeneratedPack }
+  | { status: 'error'; message: string }
 ```
 
 ---
 
-## 5. CODE QUALITY — NON-NEGOTIABLE RULES
+## 7. FILE STRUCTURE
 
-### Never write placeholder code
-```ts
-// ❌ FORBIDDEN — lazy placeholders
-// TODO: implement this
-// @ts-ignore
-const result = {} as GeneratedImage
-return null // placeholder
 ```
-
-### Never inline prompts or region data
-```ts
-// ❌ FORBIDDEN
-const prompt = `Generate an image for Morocco audience...`
-const settings = ['medina', 'corniche'] // hardcoded region
-
-// ✅ CORRECT — all prompts in lib/prompts.ts, all regions in lib/regions.ts
-import { buildImagePrompt } from '@/lib/prompts'
-import { getRegionContext } from '@/lib/regions'
-const prompt = buildImagePrompt({ product, audience, angle, platform })
-```
-
-### Never make sequential AI calls
-```ts
-// ❌ FORBIDDEN — kills performance
-for (const p of prompts) {
-  const image = await generateImage(p)
-}
-
-// ✅ CORRECT — always parallel
-const results = await Promise.allSettled(prompts.map(generateImage))
-```
-
-### File length limit
-- Components: max 120 lines
-- API routes: max 80 lines
-- Utility functions: max 60 lines
-- If a file exceeds these limits, split it.
-
-### Error messages must be human-readable
-```ts
-// ❌ FORBIDDEN
-throw new Error('IMAGEN_API_ERROR_403')
-
-// ✅ CORRECT
-throw new Error('Image generation failed. Please try again or use a different photo.')
-```
-
----
-
-## 6. ENVIRONMENT VARIABLES
-
-All env vars must exist in `.env.example` with placeholder values.
-Never access `process.env` outside of `lib/` files or API routes.
-
-```bash
-# .env.local
-NEXT_PUBLIC_SITE_URL=https://pixpack.saberlabs.dev
-PHOTOROOM_API_KEY=your_key_here
-GOOGLE_CLOUD_PROJECT_ID=your_project_id
-GOOGLE_CLOUD_LOCATION=us-central1
-GOOGLE_APPLICATION_CREDENTIALS=./service-account.json
+app/
+  api/
+    analyze/route.ts
+    generate/route.ts         ← SSE, maxDuration=180
+    request-download/route.ts ← email gate
+    download/route.ts         ← JWT + ZIP
+  layout.tsx
+  page.tsx
+components/
+  hero/HeroSection.tsx
+  upload/UploadZone.tsx
+  audience/AudienceBuilder.tsx
+  platforms/PlatformSelector.tsx  ← SINGLE-SELECT (V2)
+  generation/
+    GenerateBar.tsx
+    LoadingSequence.tsx
+  output/
+    OutputGrid.tsx            ← 2×2 grid, variation labels
+    OutputCard.tsx            ← angle pill + 3-tab copy
+    DownloadGateModal.tsx
+    DownloadButton.tsx
+  ui/ThemeToggle.tsx
+hooks/
+  useGeneration.ts            ← SSE consumer
+  useUpload.ts
+lib/
+  types.ts
+  vertex-client.ts
+  concurrency.ts
+  email-validation.ts
+  resend.ts
+  token.service.ts
+  prompts/
+    analyze.prompt.ts
+    creative-director.prompt.ts
+    ad-copy.prompt.ts
+    image-generation.prompt.ts
+  services/
+    analyze.service.ts
+    generate.service.ts
+    email.service.ts
+emails/
+  PixPackEmail.tsx
 ```
 
 ---
 
-## 7. PERFORMANCE TARGETS
+## 8. PERFORMANCE TARGETS
 
-| Metric | Target |
+| Step | Target |
 |---|---|
-| Total generation time | < 60 seconds |
-| Background removal | < 5 seconds |
-| Gemini vision analysis | < 8 seconds |
-| Imagen 3 × 6 (parallel) | < 45 seconds |
-| ZIP assembly (client) | < 3 seconds |
-| First Contentful Paint | < 1.5 seconds |
-| Time to Interactive | < 2.5 seconds |
-
-If a step exceeds its target, it must show the user meaningful progress — not a frozen screen.
+| Product analysis | < 10s |
+| Creative Director (Stage 1) | < 20s |
+| Ad Copy (Stage 2) | < 15s |
+| Image 1 (no gap) | ~8s |
+| Image 2 (no gap) | ~8s |
+| Image 3 (15s gap) | ~23s |
+| Image 4 (15s gap) | ~23s |
+| Total | ~107s |
 
 ---
 
-## 8. PRODUCT MANAGER CHECKLIST
+## 9. PM CHECKLIST
 
-Before considering any feature complete, verify:
-- [ ] Works on mobile (375px viewport)
-- [ ] Has a loading state
-- [ ] Has an error state with retry option
-- [ ] Has an empty/idle state
-- [ ] Is keyboard accessible
-- [ ] Cultural context is globally aware — not Morocco-only
-- [ ] Geography selector covers all major e-commerce regions
+Before marking any feature done:
+- [ ] Works at 375px mobile viewport
+- [ ] Has idle, loading, error, and done states
+- [ ] Keyboard accessible (focus ring, tab order)
 - [ ] No TypeScript errors (`tsc --noEmit` passes)
 - [ ] No `console.log` statements
-- [ ] API keys are never in client code
+- [ ] API keys never in client code
 - [ ] Zod validation on all API inputs
-- [ ] Adding a new region requires only a new entry in `lib/regions.ts` — no other file changes
 
 ---
 
-## 9. VERIFIED MODEL STRINGS — USE EXACTLY THESE
+## 10. VERIFIED MODEL STRINGS
 
 ```ts
-// ✅ Tested and confirmed working — do not change
-const GEMINI_MODEL  = 'gemini-2.5-flash'           // vision + text
-const IMAGEN_MODEL  = 'imagen-3.0-generate-001'    // image generation
+const TEXT_MODEL  = 'gemini-2.5-flash'
+const IMAGE_MODEL = 'gemini-2.5-flash-image'  // no versioned suffix needed
 ```
 
-Never use unversioned aliases like `gemini-1.5-flash` — they silently return 404 on Vertex AI.
+Never use `@google-cloud/vertexai` — use `@google/genai` only.

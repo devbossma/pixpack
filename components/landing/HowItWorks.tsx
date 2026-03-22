@@ -43,7 +43,7 @@ const item: Variants = {
 
 export function HowItWorks() {
   return (
-    <section aria-labelledby="how-it-works-heading"
+    <section id="how-it-works" aria-labelledby="how-it-works-heading"
       className="py-28 px-6 border-t border-[var(--border)] overflow-hidden">
       <div className="max-w-5xl mx-auto">
 

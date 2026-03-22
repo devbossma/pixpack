@@ -1,5 +1,3 @@
-import type { AgeRange, Gender, Angle } from '@/types'
-
 export const siteConfig = {
   name: "PixPack",
   description: "Global Audience-Aware Content Engine",
@@ -7,14 +5,14 @@ export const siteConfig = {
   handle: "@pixpackapp",
 }
 
-export const AGE_RANGES: { id: AgeRange; label: string }[] = [
+export const AGE_RANGES: { id: string; label: string }[] = [
   { id: '18-24', label: '18–24' },
   { id: '25-34', label: '25–34' },
   { id: '35-44', label: '35–44' },
   { id: '45-60', label: '45–60' },
 ]
 
-export const GENDERS: { id: Gender; label: string }[] = [
+export const GENDERS: { id: string; label: string }[] = [
   { id: 'women', label: 'Women' },
   { id: 'men', label: 'Men' },
   { id: 'mixed', label: 'Mixed' },
@@ -33,7 +31,7 @@ export const INTERESTS: { id: string; label: string }[] = [
   { id: 'business', label: 'Business & Career' },
 ]
 
-export const ANGLES: { id: Angle; label: string }[] = [
+export const ANGLES: { id: string; label: string }[] = [
   { id: 'lifestyle', label: 'Lifestyle' },
   { id: 'flatlay',   label: 'Flat Lay' },
   { id: 'closeup',   label: 'Close-up' },

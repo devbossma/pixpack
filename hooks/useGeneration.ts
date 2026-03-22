@@ -1,297 +1,427 @@
 'use client'
+/**
+ * hooks/useGeneration.ts
+ *
+ * Unified generation store using Zustand.
+ * Handles configuration, upload state, pipeline progress, and AI generation (SSE or Polling).
+ */
 
 import { create } from 'zustand'
-import type { GenerationConfig, GenerationState, UploadState, GeneratedPack, GeneratedImage, PipelineStatus, ProductDescription, PostingSchedule } from '@/types'
-import { PLATFORM_SPECS } from '@/lib/platforms'
+import type { 
+  GeneratedImage, 
+  GeneratedPack, 
+  ProductProfile, 
+  UserConfig,
+  Platform,
+  PipelineStatus,
+  UploadState,
+  GenerationConfig
+} from '@/types'
+
+const USE_SSE = process.env.NEXT_PUBLIC_USE_SSE !== 'false'  // default true
+const POLL_INTERVAL_MS = 2_000
+
+// ─── Generation State Machine ───────────────────────────────────────────────
+
+export type GenerationState =
+  | { status: 'idle' }
+  | { status: 'queued'; jobId: string; position: number; estimatedWait: number }
+  | { status: 'analyzing'; jobId: string }
+  | { status: 'generating'; jobId: string; stage: number; stageMessage: string; images: GeneratedImage[] }
+  | { status: 'done'; jobId: string; pack: GeneratedPack }
+  | { status: 'error'; message: string }
+
+// ─── Store Interface ────────────────────────────────────────────────────────
 
 interface GenerationStore {
+  // State
   config: GenerationConfig
-  setConfig: (partial: Partial<GenerationConfig>) => void
-
   uploadState: UploadState
-  setUploadState: (state: UploadState) => void
-
-  generationState: GenerationState
   pipelineStatus: PipelineStatus
-  lastGeneratedHash: string | null
+  lastGeneratedHash: string
+  generationState: GenerationState
+  
+  // Persistence for analysis results
+  productProfile: ProductProfile | null
   isProcessed: boolean
-  analysis: any | null
-  extractedImageUrl: string | null
 
-  startGeneration: () => void
+  // Actions
+  setConfig: (updates: Partial<GenerationConfig>) => void
+  setUploadState: (state: UploadState) => void
   setPipelineStatus: (status: PipelineStatus) => void
-  setLastGeneratedHash: (hash: string | null) => void
-  setIsProcessed: (val: boolean) => void
-  setBrainResults: (analysis: any, url: string) => void
-  reset: () => void
+  setLastGeneratedHash: (hash: string) => void
   resetState: () => void
+  startGeneration: () => Promise<void>
 }
 
-let globalAbortController: AbortController | null = null
+// Internal refs (not reactive)
+let abortController: AbortController | null = null
+let pollTimer: ReturnType<typeof setTimeout> | null = null
 
-// ─── Selectors ──────────────────────────────────────────────────────────────
-export const selectCanGenerate = (s: GenerationStore): boolean =>
-  s.uploadState.status === 'ready' &&
-  s.config.regionId !== null &&
-  s.config.ageRanges.length >= 1 &&
-  s.config.gender !== null &&
-  s.config.platforms.length >= 1 &&
-  s.config.angles.length >= 1
+// ─── Initial State ───────────────────────────────────────────────────────────
 
-export const selectIsGenerating = (s: GenerationStore): boolean =>
-  s.generationState.status === 'analyzing' ||
-  s.generationState.status === 'generating'
+const INITIAL_CONFIG: GenerationConfig = {
+  regionId: null,
+  ageRange: null,
+  gender: null,
+  interest: null,
+  productHint: null,
+  language: 'auto',
+  platform: null,
+  angle: null,
+}
 
-// ─── Store ──────────────────────────────────────────────────────────────────
+// ─── Selectors ───────────────────────────────────────────────────────────────
+
+export const selectCanGenerate = (state: GenerationStore) => 
+  state.uploadState.status === 'ready' && !!state.config.platform
+
+export const selectIsGenerating = (state: GenerationStore) => 
+  ['queued', 'analyzing', 'generating'].includes(state.generationState.status)
+
+// ─── The Store ───────────────────────────────────────────────────────────────
+
 export const useGenerationStore = create<GenerationStore>((set, get) => ({
-  config: {
-    regionId: null,
-    ageRanges: ['25-34'],
-    gender: 'women',
-    interest: null,
-    productHint: null,
-    language: 'auto',
-    platforms: [],
-    angles: [],
-  },
-
-  setConfig: (partial) => set((state) => {
-    const isHintChanging = 'productHint' in partial && partial.productHint !== state.config.productHint;
-    return {
-      config: { ...state.config, ...partial },
-      isProcessed: isHintChanging ? false : state.isProcessed
-    };
-  }),
-
+  config: INITIAL_CONFIG,
   uploadState: { status: 'idle' },
-  setUploadState: (s) => set((state) => {
-    const isNewImage = state.uploadState.status === 'ready' && s.status === 'ready' && s.base64 !== state.uploadState.base64;
-    return {
-      uploadState: s,
-      isProcessed: isNewImage ? false : state.isProcessed
-    };
-  }),
-
-  generationState: { status: 'idle' },
   pipelineStatus: 'idle',
-  lastGeneratedHash: null,
+  lastGeneratedHash: '',
+  generationState: { status: 'idle' },
+  productProfile: null,
   isProcessed: false,
-  analysis: null,
-  extractedImageUrl: null,
+
+  setConfig: (updates) => set((s) => ({ config: { ...s.config, ...updates } })),
+  
+  setUploadState: (state) => set({ 
+    uploadState: state,
+    isProcessed: state.status === 'ready' ? false : get().isProcessed,
+    productProfile: state.status === 'ready' ? null : get().productProfile
+  }),
 
   setPipelineStatus: (status) => set({ pipelineStatus: status }),
+
   setLastGeneratedHash: (hash) => set({ lastGeneratedHash: hash }),
-  setIsProcessed: (val) => set({ isProcessed: val }),
-  setBrainResults: (analysis, url) => set({ analysis, extractedImageUrl: url, isProcessed: true }),
+
+  resetState: () => {
+    abortController?.abort()
+    if (pollTimer) clearTimeout(pollTimer)
+    set({ 
+      generationState: { status: 'idle' },
+      pipelineStatus: 'idle',
+      isProcessed: false,
+      productProfile: null
+    })
+  },
 
   startGeneration: async () => {
-    const state = get()
-    if (!selectCanGenerate(state) || selectIsGenerating(state)) return
-    const { config, uploadState } = state
+    const { config, uploadState, isProcessed, productProfile } = get()
+    
+    if (uploadState.status !== 'ready' || !config.platform) return
 
-    if (uploadState.status !== 'ready') return
-
-    // Cancel any in-progress generation
-    globalAbortController?.abort()
-    globalAbortController = new AbortController()
-
-    set({ generationState: { status: 'analyzing' } })
+    abortController?.abort()
+    abortController = new AbortController()
 
     try {
-      let analysis = state.analysis
-      let extractedImageUrl = state.extractedImageUrl
+      let currentProfile = productProfile
 
-      if (!state.isProcessed) {
-        // 1. Prepare Data for "Analyze & Extract"
+      // Step 1: Analysis (if not processed)
+      if (!isProcessed || !currentProfile) {
+        set({ generationState: { status: 'analyzing', jobId: '' } })
+        
+        // We need the File object here. In UploadState 'ready', we store base64 but maybe not the File?
+        // Let's assume /api/analyze can take the original file.
+        // Wait, UploadZone passes a File to processFile.
+        // If we only have base64, we can convert it back to a Blob if needed, 
+        // but it's better if we keep the file or use a base64-friendly analyze route.
+        // Looking at /api/analyze, it expects multipart/form-data with 'file'.
+        
+        // Convert base64 back to Blob for multipart upload
+        const res = await fetch(`data:${uploadState.mimeType};base64,${uploadState.base64}`)
+        const blob = await res.blob()
+        const file = new File([blob], 'product.jpg', { type: uploadState.mimeType })
+
         const formData = new FormData()
-
-        const byteCharacters = atob(uploadState.base64)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
-        }
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], { type: uploadState.mimeType })
-
-        formData.append('file', blob, 'product.png')
+        formData.append('file', file)
         formData.append('productHint', config.productHint || '')
-        formData.append('language', config.language)
-        formData.append('regionId', config.regionId || 'global')
+        formData.append('language', config.language || 'auto')
 
-        // 2. Hit the "Brain" API (Background removal + Analysis)
-        const response = await fetch('/api/analyze', {
+        const analyzeRes = await fetch('/api/analyze', {
           method: 'POST',
           body: formData,
-          signal: globalAbortController.signal,
+          signal: abortController.signal,
         })
 
-        if (!response.ok) {
-          const responseText = await response.text()
-          let errorMsg = 'Failed to analyze product'
-          try {
-            const errStatus = JSON.parse(responseText)
-            if (errStatus.error) errorMsg = errStatus.error
-          } catch {
-            errorMsg = `Server Error (${response.status}): Analysis failed or timed out. Please try again.`
-          }
-          throw new Error(errorMsg)
+        if (!analyzeRes.ok) {
+          const data = await analyzeRes.json()
+          set({ generationState: { status: 'error', message: data.error ?? 'Analysis failed' } })
+          return
         }
 
-        const responseText = await response.text()
-        let result;
-        try {
-          result = JSON.parse(responseText)
-        } catch {
-          throw new Error('Failed to parse analysis results. Please try again.')
+        const { extractedImageUrl, analysis } = await analyzeRes.json()
+        currentProfile = {
+          ...analysis,
+          extractedImageUrl,
+          productHint: config.productHint || undefined,
         }
-
-        analysis = result.analysis
-        extractedImageUrl = result.extractedImageUrl
-
-        set({ isProcessed: true, analysis, extractedImageUrl })
+        set({ productProfile: currentProfile, isProcessed: true })
       }
 
-      // 3. Hit the "Generate Pack" API via SSE
-      set({ generationState: { status: 'generating', stage: 1, stageMessage: 'Starting...', images: [] } })
+      // Step 2: Enqueue Job
+      const input = {
+        productProfile: currentProfile,
+        userConfig: {
+          platform: config.platform,
+          country: config.regionId || undefined,
+          ageRange: config.ageRange || undefined,
+          gender: config.gender || undefined,
+          interest: config.interest || undefined,
+          angle: config.angle || undefined,
+        } as UserConfig,
+        marketingLanguage: config.language
+      }
 
-      const receivedImages: GeneratedImage[] = []
-      let packMeta: Omit<GeneratedPack, 'images'> | null = null
-
-      const generateResponse = await fetch('/api/generate', {
-        method:  'POST',
+      const enqueueRes = await fetch('/api/queue/enqueue', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packId: crypto.randomUUID(),
-          productProfile: { ...analysis, extractedImageUrl },
-          userConfig: {
-            platforms: config.platforms,
-            country: config.regionId ?? undefined,
-            ageRange: config.ageRanges[0] ?? undefined,
-            gender: config.gender ?? undefined,
-            interest: config.interest ?? undefined,
-            angle: config.angles[0] ?? undefined,
-          },
-          marketingLanguage: config.language
-        }),
-        signal:  globalAbortController.signal,
+        body: JSON.stringify(input),
+        signal: abortController.signal,
       })
 
-      if (!generateResponse.ok || !generateResponse.body) {
-        const err = await generateResponse.json().catch(() => ({ error: 'Request failed' }))
-        throw new Error(err.error ?? 'Generation failed')
+      if (!enqueueRes.ok) {
+        const data = await enqueueRes.json()
+        set({ generationState: { status: 'error', message: data.error ?? 'Failed to queue job' } })
+        return
       }
 
-      // Read SSE stream
-      const reader  = generateResponse.body.getReader()
-      const decoder = new TextDecoder()
-      let   buffer  = ''
+      const { jobId, position } = await enqueueRes.json()
+      
+      // Show queue position immediately
+      set({ 
+        generationState: { 
+          status: 'queued', 
+          jobId, 
+          position, 
+          estimatedWait: position * 100 
+        } 
+      })
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
+      // Step 3: Connect to results
+      if (USE_SSE) {
+        await connectSSE(jobId, abortController.signal, set)
+      } else {
+        await startPolling(jobId, abortController.signal, set, get)
+      }
 
-        buffer += decoder.decode(value, { stream: true })
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return
+      set({ generationState: { status: 'error', message: 'Network error. Please try again.' } })
+    }
+  }
+}))
 
-        const events = buffer.split('\n\n')
-        buffer = events.pop() ?? ''  // keep incomplete last chunk
+// ─── Transport Helpers ──────────────────────────────────────────────────────
 
-        for (const eventStr of events) {
-          const line = eventStr.trim()
-          if (!line.startsWith('data: ')) continue
+async function connectSSE(
+  jobId: string, 
+  signal: AbortSignal, 
+  set: (state: Partial<GenerationStore>) => void
+) {
+  return new Promise<void>((resolve) => {
+    const url = `/api/queue/stream?jobId=${jobId}`
 
-          let event: Record<string, unknown>
-          try {
-            event = JSON.parse(line.slice(6))
-          } catch {
-            continue
+    fetch(url, { signal })
+      .then(async (res) => {
+        if (!res.body) { resolve(); return }
+
+        const reader = res.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        let currentImages: GeneratedImage[] = []
+        let currentStage = 0
+        let currentMessage = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            let event: Record<string, unknown>
+            try { event = JSON.parse(line.slice(6)) } catch { continue }
+
+            handleEvent(event, jobId, currentImages, currentStage, currentMessage, set,
+              (imgs, stage, msg) => {
+                currentImages = imgs
+                currentStage = stage
+                currentMessage = msg
+              },
+            )
           }
+        }
+        resolve()
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') {
+          set({ generationState: { status: 'error', message: 'Connection lost. Please try again.' } })
+        }
+        resolve()
+      })
+  })
+}
 
-          if (event.type === 'stage') {
-            set(prev => {
-              const prevGen = prev.generationState
-              return {
-                generationState: {
-                  status: 'generating',
-                  stage: event.stage as number,
-                  stageMessage: event.message as string,
-                  images: prevGen.status === 'generating' ? prevGen.images : [],
-                }
-              }
-            })
-          }
+async function startPolling(
+  jobId: string, 
+  signal: AbortSignal, 
+  set: (state: Partial<GenerationStore>) => void,
+  get: () => GenerationStore
+) {
+  let lastImageCount = 0
+  let currentImages: GeneratedImage[] = []
 
-          if (event.type === 'image') {
-            const image = event.image as GeneratedImage
-            receivedImages.push(image)
+  const poll = async () => {
+    if (signal.aborted) return
 
-            set(prev => {
-              const prevGen = prev.generationState
-              return {
-                generationState: {
-                  status: 'generating',
-                  stage: prevGen.status === 'generating' ? prevGen.stage : 3,
-                  stageMessage: prevGen.status === 'generating' ? prevGen.stageMessage : 'Generating images...',
-                  images: [...receivedImages],
-                }
-              }
-            })
-          }
+    try {
+      const res = await fetch(`/api/queue/status?jobId=${jobId}`, { signal })
+      if (!res.ok) { 
+        set({ generationState: { status: 'error', message: 'Status check failed' } })
+        return 
+      }
+      const data = await res.json()
 
-          if (event.type === 'meta') {
-            packMeta = {
-              id:                 event.id as string,
-              productDescription: event.productDescription as ProductDescription,
-              postingSchedule:    event.postingSchedule    as PostingSchedule[],
-              audience:           event.audience           as GenerationConfig,
-              totalScore:         event.totalScore         as number,
-              generatedAt:        event.generatedAt        as string,
+      // Update queue position
+      if (data.status === 'queued') {
+        set({ 
+          generationState: { 
+            status: 'queued', 
+            jobId, 
+            position: data.position, 
+            estimatedWait: data.estimatedWaitSeconds 
+          } 
+        })
+      }
+
+      // Update stage
+      if (data.status === 'processing') {
+        if (data.stage === 1 || data.stage === 2) {
+          set({ generationState: { status: 'analyzing', jobId } })
+        } else {
+          const current = get().generationState
+          set({
+            generationState: {
+              status: 'generating',
+              jobId,
+              stage: data.stage,
+              stageMessage: data.stageMessage,
+              images: current.status === 'generating' ? current.images : [],
             }
-          }
-
-          if (event.type === 'done') {
-            if (!packMeta) throw new Error('Stream ended without pack metadata')
-
-            const pack: GeneratedPack = {
-              ...packMeta,
-              images: receivedImages,
-            }
-
-            set({ generationState: { status: 'done', pack } })
-          }
-
-          if (event.type === 'error') {
-            throw new Error(event.message as string)
-          }
+          })
         }
       }
 
-    } catch (error: unknown) {
-      if ((error as Error).name === 'AbortError') return
+      // New images
+      const newImages: GeneratedImage[] = data.images ?? []
+      if (newImages.length > lastImageCount) {
+        currentImages = newImages
+        lastImageCount = newImages.length
+        set({
+          generationState: {
+            status: 'generating',
+            jobId,
+            stage: data.stage ?? 3,
+            stageMessage: data.stageMessage ?? 'Generating images...',
+            images: currentImages,
+          }
+        })
+      }
 
-      const message = error instanceof Error ? error.message : 'Something went wrong during generation'
+      // Terminal states
+      if (data.status === 'done' && data.pack) {
+        set({ generationState: { status: 'done', jobId, pack: data.pack } })
+        return
+      }
+      if (data.status === 'failed') {
+        set({ generationState: { status: 'error', message: data.error ?? 'Generation failed' } })
+        return
+      }
+
+      // Schedule next poll
+      if (!signal.aborted) {
+        pollTimer = setTimeout(poll, POLL_INTERVAL_MS)
+      }
+
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        set({ generationState: { status: 'error', message: 'Network error during polling' } })
+      }
+    }
+  }
+
+  poll()
+}
+
+function handleEvent(
+  event: Record<string, unknown>,
+  jobId: string,
+  currentImages: GeneratedImage[],
+  currentStage: number,
+  currentMessage: string,
+  set: (state: Partial<GenerationStore>) => void,
+  update: (imgs: GeneratedImage[], stage: number, msg: string) => void,
+) {
+  switch (event.type) {
+    case 'queued':
       set({
         generationState: {
-          status: 'error',
-          message,
-          retryable: true
+          status: 'queued',
+          jobId,
+          position: event.position as number,
+          estimatedWait: event.estimatedWait as number,
         }
       })
-    }
-  },
+      break
 
-  reset: () => {
-    globalAbortController?.abort()
-    set({ generationState: { status: 'idle' }, pipelineStatus: 'idle' })
-  },
-  resetState: () => {
-    globalAbortController?.abort()
-    set((state) => ({
-      isProcessed: false,
-      analysis: null,
-      extractedImageUrl: null,
-      config: { ...state.config, productHint: '' },
-      pipelineStatus: 'idle',
-      generationState: { status: 'idle' }
-    }))
-  },
-}))
+    case 'stage': {
+      const stage = event.stage as number
+      const msg = event.message as string
+      update(currentImages, stage, msg)
+      if (stage <= 2) {
+        set({ generationState: { status: 'analyzing', jobId } })
+      } else {
+        set({ generationState: { status: 'generating', jobId, stage, stageMessage: msg, images: currentImages } })
+      }
+      break
+    }
+
+    case 'image': {
+      const image = event.image as GeneratedImage
+      const imgs = [...currentImages, image]
+      update(imgs, currentStage, currentMessage)
+      set({
+        generationState: {
+          status: 'generating',
+          jobId,
+          stage: currentStage,
+          stageMessage: currentMessage,
+          images: imgs,
+        }
+      })
+      break
+    }
+
+    case 'done':
+      if (event.pack) {
+        set({ generationState: { status: 'done', jobId, pack: event.pack as GeneratedPack } })
+      }
+      break
+
+    case 'error':
+      set({ generationState: { status: 'error', message: event.message as string } })
+      break
+  }
+}

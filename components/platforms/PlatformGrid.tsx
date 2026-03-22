@@ -6,18 +6,18 @@ import { PLATFORM_SPECS } from '@/lib/platforms'
 import type { Platform } from '@/types'
 
 export function PlatformGrid({ value, onChange }: {
-  value: Platform[]
-  onChange: (v: Platform[]) => void
+  value: Platform | null
+  onChange: (v: Platform | null) => void
 }) {
   function toggle(id: Platform) {
-    onChange(value.includes(id) ? value.filter(p => p !== id) : [...value, id])
+    onChange(value === id ? null : id)
   }
 
   return (
     <div className="grid grid-cols-2 gap-1.5">
       {Object.values(PLATFORM_SPECS).map(spec => {
-        const active = value.includes(spec.id as Platform)
-        const Icon = spec.LucideIcon
+        const active = value === spec.id
+        const Icon = spec.LucideIcon!
         return (
           <motion.button
             key={spec.id}

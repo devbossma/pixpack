@@ -1,262 +1,273 @@
-# Skill: Client-Side ZIP Handling
+# Skill: Client Download Flow (V2)
 
-Read this file before implementing any download or file export functionality.
-
----
-
-## THE GOLDEN RULE
-
-**ZIP assembly NEVER happens on the server.**
-
-Fetching 6 images (each potentially 1–3MB) and zipping them in a Vercel serverless function will:
-1. Hit the 50MB response size limit
-2. Consume massive memory (Lambda functions have 1GB max)
-3. Risk timeout on slow connections
-4. Cost significantly more per invocation
-
-**All of this happens on the client, in the browser, using `jszip` and `file-saver`.**
+Read this before implementing any download button, download modal, or pack saving.
 
 ---
 
-## PACKAGE INSTALLATION
+## THE RULE
 
-```bash
-npm install jszip file-saver
-npm install --save-dev @types/file-saver
-```
+**ZIP happens on the server. The client never touches jszip.**
 
----
+The client's only job:
+1. Trigger the `DownloadGateModal` when user clicks download
+2. POST the full `GeneratedPack` to `/api/request-download`
+3. Show the modal states (idle → loading → success / error / rate_limited)
 
-## WHAT THE SERVER RETURNS
-
-The `/api/generate` route returns image data as **base64 strings** embedded in the JSON response.
-The client does NOT need to make additional fetch calls to download the images — they're already in memory.
-
-```ts
-// Server response shape
-interface GeneratedImage {
-  id: string
-  angle: Angle
-  platform: Platform
-  platformSpec: PlatformSpec
-  imageBase64: string        // ← "data:image/png;base64,iVBOR..."
-  caption: string
-  hashtags: string[]
-  status: 'done' | 'error'
-  error?: string
-}
-```
-
-**Why base64 in response?**
-- Imagen 3 returns images as base64 bytes — no intermediate storage needed
-- Avoids CORS issues with cross-origin image URLs
-- Works offline after initial generation
-- No expiry issues (Replicate URLs expire, Vertex base64 doesn't)
+The server builds the ZIP at `/api/download` when the user clicks the email link.
+See `download-gate.md` for the server implementation.
 
 ---
 
-## ZIP ASSEMBLY IMPLEMENTATION
+## DOWNLOAD GATE MODAL
+
+`components/output/DownloadGateModal.tsx`
+
+Triggered by any download button. Receives the full `pack` as a prop.
+
+States: `idle` → `loading` → `success` | `error` | `rate_limited`
 
 ```tsx
-// components/output/DownloadButton.tsx
 'use client'
+import { useState }               from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, Download, CheckCircle, Loader2, Mail } from 'lucide-react'
+import type { GeneratedPack }     from '@/lib/types'
 
-import JSZip from 'jszip'
-import { saveAs } from 'file-saver'
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import type { GeneratedImage } from '@/types'
+type ModalState = 'idle' | 'loading' | 'success' | 'error' | 'rate_limited'
 
-interface DownloadButtonProps {
-  images: GeneratedImage[]
-  audienceSummary: string // e.g. "Women 25-34 Morocco"
+interface DownloadGateModalProps {
+  pack:    GeneratedPack
+  onClose: () => void
 }
 
-export function DownloadButton({ images, audienceSummary }: DownloadButtonProps) {
-  const [isZipping, setIsZipping] = useState(false)
-  const [zipProgress, setZipProgress] = useState(0)
+export function DownloadGateModal({ pack, onClose }: DownloadGateModalProps) {
+  const [state,   setState]   = useState<ModalState>('idle')
+  const [email,   setEmail]   = useState('')
+  const [message, setMessage] = useState('')
 
-  async function handleDownloadAll() {
-    setIsZipping(true)
-    setZipProgress(0)
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!email || state === 'loading') return
+    setState('loading')
 
     try {
-      const zip = new JSZip()
-      const imagesFolder = zip.folder('images')!
-      const captionsLines: string[] = [
-        `PixPack Content Pack`,
-        `Audience: ${audienceSummary}`,
-        `Generated: ${new Date().toLocaleDateString()}`,
-        `──────────────────────────\n`,
-      ]
-
-      const successfulImages = images.filter(img => img.status === 'done' && img.imageBase64)
-      
-      // Process each image
-      successfulImages.forEach((img, index) => {
-        // Convert base64 data URL to raw base64
-        const base64Data = img.imageBase64.includes(',')
-          ? img.imageBase64.split(',')[1]
-          : img.imageBase64
-
-        // Filename: pixpack_instagram_post_lifestyle.png
-        const filename = `pixpack_${img.platform}_${img.angle}.png`
-        imagesFolder.file(filename, base64Data, { base64: true })
-
-        // Build captions file entry
-        captionsLines.push(`📸 ${filename}`)
-        captionsLines.push(`Platform: ${img.platformSpec.name} (${img.platformSpec.width}×${img.platformSpec.height}px)`)
-        if (img.caption) captionsLines.push(`Caption: ${img.caption}`)
-        if (img.hashtags.length) captionsLines.push(`Hashtags: ${img.hashtags.join(' ')}`)
-        captionsLines.push('')
-
-        // Update progress
-        setZipProgress(Math.round(((index + 1) / successfulImages.length) * 80))
+      const res = await fetch('/api/request-download', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email, pack }),  // full pack object
       })
+      const data = await res.json()
 
-      // Add captions.txt
-      zip.file('captions.txt', captionsLines.join('\n'))
+      if (res.status === 429) { setState('rate_limited'); setMessage(data.error); return }
+      if (!res.ok)            { setState('error');        setMessage(data.error ?? 'Something went wrong.'); return }
 
-      // Add README
-      zip.file('README.txt', buildReadme(images, audienceSummary))
-
-      setZipProgress(90)
-
-      // Generate ZIP blob
-      const blob = await zip.generateAsync(
-        { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
-        (metadata) => {
-          setZipProgress(90 + Math.round(metadata.percent * 0.1))
-        }
-      )
-
-      setZipProgress(100)
-
-      // Trigger download
-      const timestamp = new Date().toISOString().slice(0, 10)
-      saveAs(blob, `pixpack_${timestamp}.zip`)
-
-    } catch (err) {
-      console.error('ZIP assembly failed:', err)
-      // Show toast error to user
-    } finally {
-      setIsZipping(false)
-      setZipProgress(0)
+      setState('success')
+    } catch {
+      setState('error')
+      setMessage('Network error. Please try again.')
     }
   }
 
   return (
-    <motion.button
-      onClick={handleDownloadAll}
-      disabled={isZipping}
-      whileTap={{ scale: 0.97 }}
-      className="relative bg-[#0f0e0c] text-white font-semibold px-6 py-3 rounded-lg overflow-hidden disabled:opacity-70"
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => { if (e.target === e.currentTarget && state !== 'success') onClose() }}
     >
-      {/* Progress fill background */}
-      {isZipping && (
-        <motion.div
-          className="absolute inset-0 bg-[#ff4d1c] origin-left"
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: zipProgress / 100 }}
-          transition={{ ease: 'easeOut' }}
-        />
-      )}
-      
-      <span className="relative z-10">
-        {isZipping
-          ? zipProgress < 100
-            ? `Zipping... ${zipProgress}%`
-            : 'Downloading...'
-          : `⬇ Download All (${images.filter(i => i.status === 'done').length} images)`
-        }
-      </span>
-    </motion.button>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        animate={{ opacity: 1, scale: 1,    y: 0  }}
+        exit={{    opacity: 0, scale: 0.95, y: 8  }}
+        transition={{ ease: [0.25, 0.1, 0.25, 1], duration: 0.2 }}
+        className="relative w-full max-w-md rounded-2xl p-6"
+        style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
+      >
+        {/* Close — always shown */}
+        <button onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 rounded-lg"
+          style={{ color: 'var(--text-muted)' }}
+          aria-label="Close"
+        >
+          <X size={16} />
+        </button>
+
+        <AnimatePresence mode="wait">
+
+          {/* IDLE / LOADING / ERROR / RATE_LIMITED */}
+          {state !== 'success' && (
+            <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: 'rgba(255,77,28,0.12)', border: '1px solid rgba(255,77,28,0.2)' }}>
+                  <Download size={18} style={{ color: 'var(--accent)' }} />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold"
+                    style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                    Your pack is ready
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                    Enter your email to receive the download link
+                  </p>
+                </div>
+              </div>
+
+              {/* What's in the ZIP */}
+              <div className="flex gap-2 flex-wrap mb-5">
+                {[
+                  `${pack.images.filter(i => i.status === 'done').length} images`,
+                  '4 variations (A/B/C/D)',
+                  'Full ad copy',
+                  '24h link',
+                ].map(label => (
+                  <span key={label} className="text-xs px-2.5 py-1 rounded-full"
+                    style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    {label}
+                  </span>
+                ))}
+              </div>
+
+              {/* Error / rate limit message */}
+              {(state === 'error' || state === 'rate_limited') && (
+                <div className="rounded-lg px-3 py-2.5 mb-4 text-sm"
+                  style={{ backgroundColor: 'rgba(255,77,28,0.08)', border: '1px solid rgba(255,77,28,0.2)', color: 'var(--accent)' }}>
+                  {message}
+                </div>
+              )}
+
+              {/* Form — hidden on rate_limited */}
+              {state !== 'rate_limited' && (
+                <form onSubmit={handleSubmit}>
+                  <div className="relative mb-3">
+                    <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2"
+                      style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      type="email" value={email} onChange={e => setEmail(e.target.value)}
+                      placeholder="your@email.com" required disabled={state === 'loading'}
+                      autoFocus
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors"
+                      style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}
+                      onFocus={e => (e.target.style.borderColor = 'var(--accent)')}
+                      onBlur={e  => (e.target.style.borderColor = 'var(--border)')}
+                    />
+                  </div>
+                  <button type="submit" disabled={state === 'loading' || !email}
+                    className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-opacity"
+                    style={{ backgroundColor: 'var(--accent)', color: '#fff', opacity: (state === 'loading' || !email) ? 0.7 : 1 }}>
+                    {state === 'loading'
+                      ? <><Loader2 size={15} className="animate-spin" /> Sending…</>
+                      : <>Send my pack →</>}
+                  </button>
+                </form>
+              )}
+
+              <p className="text-center text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
+                Free · No account needed · No spam
+              </p>
+            </motion.div>
+          )}
+
+          {/* SUCCESS */}
+          {state === 'success' && (
+            <motion.div key="success" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-4">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: 'rgba(0,194,122,0.12)', border: '1px solid rgba(0,194,122,0.25)' }}>
+                <CheckCircle size={26} style={{ color: 'var(--accent3)' }} />
+              </div>
+              <h2 className="text-lg font-semibold mb-2"
+                style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>
+                Check your inbox
+              </h2>
+              <p className="text-sm mb-1" style={{ color: 'var(--text-muted)' }}>We sent your download link to</p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>{email}</p>
+              <p className="text-xs mb-6" style={{ color: 'var(--text-muted)' }}>
+                Expires in 24 hours · One-time use · Check spam if needed
+              </p>
+              <button onClick={onClose}
+                className="px-6 py-2 rounded-xl text-sm font-medium"
+                style={{ backgroundColor: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                Close
+              </button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   )
 }
 ```
 
 ---
 
-## SINGLE IMAGE DOWNLOAD
+## HOW TO WIRE IT IN OutputGrid
 
-For downloading individual images from the output grid:
+```tsx
+'use client'
+import { useState }              from 'react'
+import { AnimatePresence }       from 'framer-motion'
+import { DownloadGateModal }     from '@/components/output/DownloadGateModal'
+import type { GeneratedPack }    from '@/lib/types'
 
-```ts
-// utils/download.ts
-export function downloadSingleImage(image: GeneratedImage): void {
-  const base64Data = image.imageBase64.includes(',')
-    ? image.imageBase64.split(',')[1]
-    : image.imageBase64
+// In the component:
+const [showDownload, setShowDownload] = useState(false)
 
-  // Convert base64 to blob
-  const byteCharacters = atob(base64Data)
-  const byteNumbers = Array.from(byteCharacters, char => char.charCodeAt(0))
-  const byteArray = new Uint8Array(byteNumbers)
-  const blob = new Blob([byteArray], { type: 'image/png' })
+// The button (in grid header AND on each OutputCard hover overlay):
+<button onClick={() => setShowDownload(true)}>
+  Download Pack
+</button>
 
-  const filename = `pixpack_${image.platform}_${image.angle}.png`
-  saveAs(blob, filename)
-}
+// The modal at the bottom of the JSX:
+<AnimatePresence>
+  {showDownload && (
+    <DownloadGateModal
+      pack={pack}
+      onClose={() => setShowDownload(false)}
+    />
+  )}
+</AnimatePresence>
 ```
 
 ---
 
-## COPY CAPTIONS TO CLIPBOARD
+## COPY AD COPY TO CLIPBOARD
+
+The "Copy all copy" button in the OutputGrid header copies all 4 variations' copy to clipboard.
 
 ```ts
 // utils/clipboard.ts
-export async function copyAllCaptions(images: GeneratedImage[]): Promise<void> {
+import type { GeneratedImage } from '@/lib/types'
+
+const LETTERS = ['A', 'B', 'C', 'D']
+
+export async function copyAllAdCopy(images: GeneratedImage[]): Promise<void> {
   const text = images
-    .filter(img => img.status === 'done' && img.caption)
-    .map(img =>
-      [
-        `── ${img.platformSpec.name} (${img.angle}) ──`,
-        img.caption,
-        img.hashtags.join(' '),
-      ].join('\n')
-    )
-    .join('\n\n')
+    .filter(img => img.status === 'done')
+    .map(img => {
+      const letter = LETTERS[img.variation - 1] ?? img.variation
+      return [
+        `── VARIATION ${letter} (${img.angle.toUpperCase()}) ──`,
+        `Awareness:\n${img.adCopy.awareness}`,
+        `Consideration:\n${img.adCopy.consideration}`,
+        `Conversion:\n${img.adCopy.conversion}`,
+      ].join('\n\n')
+    })
+    .join('\n\n' + '─'.repeat(40) + '\n\n')
 
-  await navigator.clipboard.writeText(text)
-}
-```
-
----
-
-## README FILE CONTENT
-
-```ts
-function buildReadme(images: GeneratedImage[], audienceSummary: string): string {
-  const successCount = images.filter(i => i.status === 'done').length
-  const errorCount = images.filter(i => i.status === 'error').length
-
-  return `PIXPACK — AI CONTENT PACK
-═══════════════════════════
-
-Generated: ${new Date().toLocaleString()}
-Audience:  ${audienceSummary}
-Images:    ${successCount} generated${errorCount > 0 ? `, ${errorCount} failed` : ''}
-
-FILES IN THIS PACK
-──────────────────
-images/         → Your platform-ready product images
-captions.txt    → Copy-paste captions + hashtags for each image
-
-IMAGE NAMING
-────────────
-pixpack_{platform}_{angle}.png
-
-Platforms: instagram_post, instagram_story, tiktok, facebook_post, shopify_product, web_banner
-Angles:    lifestyle, flatlay, closeup, model, hero
-
-TIPS
-────
-• Post within 24 hours for best algorithm reach
-• Use the caption + hashtags from captions.txt as-is or customize
-• For Stories, crop from the top of the image if needed
-
-Generated by PixPack — pixpack.app
-`
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    // HTTP fallback (localhost dev)
+    const el = document.createElement('textarea')
+    el.value = text
+    document.body.appendChild(el)
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
+  }
 }
 ```
 
@@ -265,43 +276,21 @@ Generated by PixPack — pixpack.app
 ## WHAT NOT TO DO
 
 ```ts
-// ❌ NEVER — server-side ZIP causes memory crashes on Vercel
-// app/api/download/route.ts
-const zip = new JSZip()
-const images = await Promise.all(urls.map(url => fetch(url).then(r => r.blob())))
-// This will crash on Vercel for large images
+// ❌ NEVER — no client-side ZIP in V2
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
 
-// ❌ NEVER — stream ZIP from server
-res.setHeader('Content-Type', 'application/zip')
-archiver.pipe(res) // This blocks the serverless function
+// ❌ NEVER — no direct download trigger (bypasses email gate)
+function downloadImage(image: GeneratedImage) { ... }
 
-// ✅ ALWAYS — all ZIP work in the browser component
-// Client already has the base64 images in state
-// JSZip runs in the browser, no server involved
-```
+// ❌ NEVER — referencing removed V1 fields
+pack.productDescription  // does not exist in V2
+pack.postingSchedule     // does not exist in V2
+pack.totalScore          // does not exist in V2
+image.caption            // does not exist in V2
+image.hashtags           // does not exist in V2
+image.engagementScore    // does not exist in V2
 
----
-
-## BROWSER COMPATIBILITY NOTE
-
-`jszip` and `file-saver` work in all modern browsers.
-`navigator.clipboard` requires HTTPS (fine for Vercel deployment, not for `http://localhost` — use a fallback for dev).
-
-```ts
-// Safe clipboard helper
-export async function safeClipboardWrite(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    // Fallback for HTTP or permission denied
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
-    return true
-  }
-}
+// ✅ ALWAYS — every download opens the modal
+<button onClick={() => setShowDownload(true)}>Download Pack</button>
 ```

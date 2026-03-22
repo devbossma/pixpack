@@ -1,176 +1,249 @@
 'use client'
 
 import { useState } from 'react'
-import { ImageIcon, Megaphone, BarChart2, AlertTriangle, Clipboard, CheckCircle, Lightbulb } from 'lucide-react'
-import { motion } from 'framer-motion'
-import type { GeneratedImage } from '@/types'
+import { ImageIcon, AlertTriangle, Clipboard, CheckCircle, Download } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import type { GeneratedImage, Platform } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
 import { cardEntrance } from '@/lib/animations'
-import { PlatformIcons } from './TemplateCard'
 
-type Tab = 'image' | 'adcopy' | 'score'
+type CopyTab = 'awareness' | 'consideration' | 'conversion'
+
+const VARIATION_LETTERS = ['A', 'B', 'C', 'D'] as const
+
+const ANGLE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  lifestyle: { bg: 'bg-blue-500/10',   text: 'text-blue-400',   border: 'border-blue-500/25' },
+  hero:      { bg: 'bg-purple-500/10', text: 'text-purple-400', border: 'border-purple-500/25' },
+  context:   { bg: 'bg-amber-500/10',  text: 'text-amber-400',  border: 'border-amber-500/25' },
+  closeup:   { bg: 'bg-green-500/10',  text: 'text-green-400',  border: 'border-green-500/25' },
+}
+
+const COPY_TABS: { id: CopyTab; label: string; colorCls: string }[] = [
+  { id: 'awareness',     label: 'Awareness',     colorCls: 'text-blue-400 border-blue-400' },
+  { id: 'consideration', label: 'Consideration', colorCls: 'text-amber-400 border-amber-400' },
+  { id: 'conversion',    label: 'Conversion',    colorCls: 'text-green-400 border-green-400' },
+]
 
 interface OutputCardProps {
   image: GeneratedImage
   index: number
+  onDownload?: () => void
 }
 
-export function OutputCard({ image, index }: OutputCardProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('image')
+export function OutputCard({ image, index, onDownload }: OutputCardProps) {
+  const [activeTab, setActiveTab] = useState<CopyTab | null>(null) // null = image view
   const [copiedField, setCopiedField] = useState<string | null>(null)
 
-  async function copyToClipboard(text: string, field: string) {
-    await navigator.clipboard.writeText(text)
+  async function copyToClipboard(text: string, field: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+    }
     setCopiedField(field)
     setTimeout(() => setCopiedField(null), 1500)
   }
 
-  const spec = PLATFORM_SPECS[image.platform as keyof typeof PLATFORM_SPECS]
-  const scoreColor =
-    image.engagementScore.score >= 8.5 ? '#00c27a' :
-    image.engagementScore.score >= 7.0 ? '#ffb800' :
-    image.engagementScore.score >= 5.0 ? '#ff8c00' : '#ff4444'
+  function downloadImage(): void {
+    if (!image.imageBase64) return
+    const base64Data = image.imageBase64.includes(',')
+      ? image.imageBase64.split(',')[1]
+      : image.imageBase64
+    const byteChars = atob(base64Data)
+    const byteNums = new Uint8Array(byteChars.length)
+    for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i)
+    const blob = new Blob([byteNums], { type: 'image/png' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `pixpack-variation-${varLetter}-${image.angle}.png`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
-  // Aspect ratio helper
+  const spec = PLATFORM_SPECS[image.platform as Platform] ?? PLATFORM_SPECS.instagram_post
+  const varLetter = VARIATION_LETTERS[(image.variation - 1)] ?? 'X'
+  const angleColors = ANGLE_COLORS[image.angle] ?? ANGLE_COLORS.lifestyle
+
   function ratioToCss(ratio: string): string {
     return ratio.replace(':', '/')
   }
 
-  const PlatformIcon = PlatformIcons[image.platform] || ImageIcon
+  const showingImage = activeTab === null
 
   return (
     <motion.div
       {...cardEntrance(index)}
-      className="rounded-xl border border-[var(--output-border)] bg-[var(--output-surface)] overflow-hidden shadow-[var(--shadow-sm)]"
+      className="rounded-xl border border-[var(--output-border)] bg-[var(--output-surface)] overflow-hidden shadow-[var(--shadow-sm)] flex flex-col h-full group/card"
     >
-      {/* Tab bar */}
-      <div className="flex border-b border-[var(--output-border)]">
-        {([
-          { id: 'image' as Tab,  Icon: ImageIcon,  label: 'Image' },
-          { id: 'adcopy' as Tab, Icon: Megaphone,  label: 'Ad Copy' },
-          { id: 'score' as Tab,  Icon: BarChart2,  label: 'Score' },
-        ]).map(({ id, Icon, label }) => (
+      {/* ── Card Header ── */}
+      <div className="flex items-center justify-between border-b border-[var(--output-border)] px-3 py-1.5 flex-shrink-0">
+        {/* Left: Variation label + Angle pill */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--output-text)]">
+            Var {varLetter}
+          </span>
+          <span className={[
+            'inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border',
+            angleColors.bg, angleColors.text, angleColors.border,
+          ].join(' ')}>
+            {image.angle}
+          </span>
+        </div>
+
+        {/* Right: Download single image */}
+        {image.imageBase64 && (
           <button
-            key={id}
-            onClick={() => setActiveTab(id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold transition-colors
-              ${activeTab === id
-                ? 'text-[var(--accent)] border-b-2 border-[var(--accent)] -mb-px bg-[var(--output-bg)]'
-                : 'text-[var(--output-muted)] hover:text-[var(--output-text)] border-b-2 border-transparent'
-              }`}
+            onClick={downloadImage}
+            title="Download this image"
+            className="opacity-0 group-hover/card:opacity-100 transition-opacity p-1.5 rounded-md text-[var(--output-muted)] hover:text-[var(--output-text)] hover:bg-[var(--output-bg)]"
           >
-             <Icon size={16} />
-            {label}
+            <Download size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Tabs Row ── */}
+      <div className="flex border-b border-[var(--output-border)] bg-[var(--output-bg)] flex-shrink-0">
+        {/* Image tab */}
+        <button
+          onClick={() => setActiveTab(null)}
+          className={[
+            'flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors border-r border-[var(--output-border)]',
+            showingImage
+              ? 'bg-[var(--output-surface)] text-[var(--output-text)]'
+              : 'text-[var(--output-muted)] hover:text-[var(--output-text)]',
+          ].join(' ')}
+          aria-pressed={showingImage}
+        >
+          <ImageIcon size={10} />
+          Image
+        </button>
+
+        {/* 3 copy tabs */}
+        {COPY_TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={[
+              'flex-1 px-2 py-1.5 text-[9px] font-bold uppercase tracking-wider transition-colors border-r last:border-r-0 border-[var(--output-border)]',
+              activeTab === tab.id
+                ? `bg-[var(--output-surface)] ${tab.colorCls} border-b-2 border-b-current`
+                : 'text-[var(--output-muted)] hover:text-[var(--output-text)]',
+            ].join(' ')}
+            aria-pressed={activeTab === tab.id}
+          >
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Tab content container */}
-      <div className="relative" style={{ aspectRatio: spec?.aspectRatio ? ratioToCss(spec.aspectRatio) : '1/1' }}>
-        {/* We ALWAYS render the image container to enforce the card's physical layout height, 
-            but we conditionally hide it if it's not the active tab. */}
-        <div className={`w-full h-full ${activeTab !== 'image' && 'hidden'}`}>
-          <div className="relative w-full h-full overflow-hidden bg-[var(--output-bg)] group">
-              {image.status === 'regenerating' && (
-                <div
-                  className="absolute inset-0 bg-gradient-to-r from-[var(--output-bg)] via-[var(--output-border)] to-[var(--output-bg)]"
-                  style={{ backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite' }}
-                />
-              )}
+      {/* ── Content area ── */}
+      <div className="relative flex-1 min-h-0 bg-[var(--output-bg)]">
+        <AnimatePresence mode="wait">
+          {showingImage ? (
+            /* ── Image panel ── */
+            <motion.div
+              key="image"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full h-full flex flex-col justify-center items-center"
+            >
+              <div
+                className="relative w-full max-h-full"
+                style={{ aspectRatio: spec.aspectRatio ? ratioToCss(spec.aspectRatio) : '1/1' }}
+              >
+                <div className="absolute inset-0 overflow-hidden border-b border-[var(--output-border)]">
+                  {image.status === 'error' && !image.imageBase64 ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--output-bg)] p-4">
+                      <AlertTriangle size={24} className="text-[var(--accent2)]" />
+                      <p className="text-xs text-[var(--output-muted)] text-center font-medium">
+                        Variation failed
+                      </p>
+                      {image.error && (
+                        <p className="text-[10px] text-[var(--output-muted)] text-center opacity-70 line-clamp-3">
+                          {image.error}
+                        </p>
+                      )}
+                    </div>
+                  ) : !image.imageBase64 ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--output-bg)]">
+                      <div className="w-6 h-6 rounded-full border-2 border-[var(--output-border)] border-t-[var(--accent)] animate-spin" />
+                      <span className="text-[10px] text-[var(--output-muted)]">Generating…</span>
+                    </div>
+                  ) : (
+                    <motion.img
+                      initial={{ opacity: 0, scale: 1.04 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, ease: 'easeOut' }}
+                      // eslint-disable-next-line @next/next/no-img-element
+                      src={image.imageBase64}
+                      alt={`Variation ${varLetter} — ${image.angle}`}
+                      className="absolute inset-0 w-full h-full object-contain bg-[var(--output-bg)]"
+                    />
+                  )}
 
-              {!image.imageBase64 && image.status === 'error' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--output-bg)]">
-                  <AlertTriangle size={20} className="text-[var(--accent2)]" />
-                  <p className="text-xs text-[var(--text-muted)] text-center px-4">
-                    Generation failed
+                  {/* Dimensions badge on hover */}
+                  <span className="absolute bottom-2 right-2 text-[10px] bg-black/40 text-white/80 px-2 py-0.5 rounded-full font-mono backdrop-blur-sm z-10 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                    {spec.width}×{spec.height}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            /* ── Ad Copy panel ── */
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.18 }}
+              className="absolute inset-0 overflow-y-auto p-4 bg-[var(--output-surface)] custom-scrollbar"
+            >
+              {activeTab && (
+                <div className="space-y-1">
+                  {/* Copy field label */}
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={[
+                      'text-[10px] font-bold uppercase tracking-widest',
+                      COPY_TABS.find(t => t.id === activeTab)?.colorCls.split(' ')[0] ?? '',
+                    ].join(' ')}>
+                      {activeTab}
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(image.adCopy[activeTab], activeTab)}
+                      className="text-[var(--output-muted)] hover:text-[var(--accent)] transition-colors p-1 rounded-md hover:bg-[var(--output-bg)]"
+                      aria-label={`Copy ${activeTab} copy`}
+                    >
+                      {copiedField === activeTab
+                        ? <CheckCircle size={13} className="text-[var(--accent3)]" />
+                        : <Clipboard size={13} />
+                      }
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-[var(--output-text)] leading-relaxed whitespace-pre-wrap">
+                    {image.adCopy[activeTab]}
+                  </p>
+
+                  {/* Context hint */}
+                  <p className="text-[10px] text-[var(--output-muted)] mt-4 pt-3 border-t border-[var(--output-border)] leading-relaxed">
+                    {activeTab === 'awareness' && 'Top-of-funnel hook — grabs attention in the first scroll'}
+                    {activeTab === 'consideration' && 'Mid-funnel argument — makes the case why they need this'}
+                    {activeTab === 'conversion' && 'Bottom-funnel CTA — urgency-driven close'}
                   </p>
                 </div>
               )}
-
-              {image.imageBase64 && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={image.imageBase64} alt={image.caption} className="absolute inset-0 w-full h-full object-cover" />
-              )}
-
-              {/* Platform badge (Top Left) */}
-              <div className="absolute top-2 left-2 flex items-center gap-1.5 z-10 bg-black/60 text-white backdrop-blur-sm px-2 py-1 rounded-md">
-                <PlatformIcon size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">{spec?.name ?? image.platform}</span>
-              </div>
-
-              {/* Dimensions badge */}
-              <span className="absolute bottom-2 right-2 text-[10px] bg-black/40 text-white/80 px-2 py-0.5 rounded-full font-mono backdrop-blur-sm z-10">
-                {spec?.width ?? 1080}×{spec?.height ?? 1080}
-              </span>
-            </div>
-          </div>
-
-        {activeTab === 'adcopy' && (
-          <div className="absolute inset-0 overflow-y-auto p-3 space-y-2 bg-[var(--output-surface)] custom-scrollbar">
-            {([
-              { key: 'awareness', label: 'AWARENESS', colorClass: 'bg-blue-500/5 border-blue-500/20' },
-              { key: 'consideration', label: 'CONSIDERATION', colorClass: 'bg-amber-500/5 border-amber-500/20' },
-              { key: 'conversion', label: 'CONVERSION', colorClass: 'bg-green-500/5 border-green-500/20' },
-            ] as const).map(({ key, label, colorClass }) => (
-              <div key={key} className={`border ${colorClass} rounded-lg p-3`}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--output-muted)]">{label}</span>
-                  <button
-                    onClick={() => copyToClipboard(image.adCopy[key], key)}
-                    className="text-[var(--output-muted)] hover:text-[var(--accent)] transition-colors p-0.5"
-                    aria-label={`Copy ${label}`}
-                  >
-                     {copiedField === key ? <CheckCircle size={16} className="text-[var(--accent3)]" /> : <Clipboard size={16} />}
-                  </button>
-                </div>
-                <p className="text-sm text-[var(--output-text)] leading-relaxed">{image.adCopy[key]}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'score' && (
-          <div className="absolute inset-0 overflow-y-auto p-4 space-y-4 bg-[var(--output-surface)] custom-scrollbar">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-display font-extrabold" style={{ color: scoreColor }}>
-                  {image.engagementScore.score.toFixed(1)}/10
-                </div>
-                <span
-                  className="inline-block mt-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
-                  style={{ color: scoreColor, backgroundColor: `${scoreColor}18` }}
-                >
-                  {image.engagementScore.label}
-                </span>
-              </div>
-              <svg width="56" height="56" viewBox="0 0 56 56">
-                <circle cx="28" cy="28" r="24" fill="none" stroke="var(--output-border)" strokeWidth="4" />
-                <circle cx="28" cy="28" r="24" fill="none" stroke={scoreColor} strokeWidth="4"
-                  strokeDasharray={`${(image.engagementScore.score / 10) * 150.8} 150.8`}
-                  strokeLinecap="round" transform="rotate(-90 28 28)" />
-              </svg>
-            </div>
-
-            <div className="bg-[var(--output-bg)] p-3 rounded-lg border border-[var(--output-border)]">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--output-muted)] mb-1">Why this score</p>
-              <p className="text-xs text-[var(--output-text)] leading-relaxed">{image.engagementScore.reason}</p>
-            </div>
-
-            <div className="flex gap-2 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-               <Lightbulb size={20} className="text-amber-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">Tip to improve</p>
-                <p className="text-xs text-[var(--output-text)] opacity-90 leading-relaxed">{image.engagementScore.tip}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Caption & Hashtags always show at the bottom regardless of tab */}
-      <div className="p-3 border-t border-[var(--output-border)] bg-[var(--output-surface)]">
-        <p className="text-xs text-[var(--output-text)] leading-relaxed mb-1 line-clamp-2">{image.caption}</p>
-        <p className="text-[10px] font-mono text-[var(--accent)] break-words truncate opacity-80">{image.hashtags.join(' ')}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   )

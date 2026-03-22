@@ -1,14 +1,12 @@
 'use client'
 import { useEffect } from 'react'
 import { OutputPanel } from '@/components/output/OutputPanel'
-import { LoadingSequence } from '@/components/generation/LoadingSequence'
 import { usePackEditor } from '@/hooks/usePackEditor'
-import { useGenerationStore, selectIsGenerating } from '@/hooks/useGeneration'
+import { useGenerationStore } from '@/hooks/useGeneration'
 
 export function WorkspaceClient() {
   const generationState = useGenerationStore((s) => s.generationState)
-  const isGenerating = useGenerationStore(selectIsGenerating)
-  const { pack, setPack, generateMissing } = usePackEditor()
+  const { pack, setPack } = usePackEditor()
 
   useEffect(() => {
     if (generationState.status === 'done') {
@@ -17,24 +15,8 @@ export function WorkspaceClient() {
   }, [generationState, setPack])
 
   return (
-    <div className="flex flex-col min-h-full">
-      <OutputPanel
-        pack={pack}
-        onGenerateMissing={generateMissing}
-      />
-
-      {isGenerating && generationState.status === 'generating' && (
-        <LoadingSequence
-          stage={generationState.stage}
-          stageMessage={generationState.stageMessage}
-        />
-      )}
-      {isGenerating && generationState.status === 'analyzing' && (
-        <LoadingSequence
-          stage={1}
-          stageMessage="Analyzing product..."
-        />
-      )}
+    <div className="flex flex-col flex-1 h-full min-h-0">
+      <OutputPanel pack={pack} />
     </div>
   )
 }

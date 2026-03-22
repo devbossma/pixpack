@@ -6,23 +6,24 @@ interface PillOption<T extends string = string> { id: T; label: string }
 
 interface PillSelectorProps<T extends string = string> {
   options: PillOption<T>[]
-  value: T | T[]
-  onChange: (value: any) => void
+  value: T | T[] | null
+  onChange: (value: T | null) => void
   single?: boolean
-  multi?: boolean
 }
 
 export function PillSelector<T extends string = string>({ options, value, onChange, single }: PillSelectorProps<T>) {
-  function toggle(id: T) {
+  function toggle(id: T): void {
     if (single) {
-      onChange(id)
+      // If clicking the already-selected pill, deselect it
+      const current = Array.isArray(value) ? value[0] : value
+      onChange(current === id ? null : id)
     } else {
-      const arr = Array.isArray(value) ? value : []
-      onChange(arr.includes(id) ? (arr as T[]).filter((v: T) => v !== id) : [...arr, id])
+      // Multi-select (not used but kept for API completeness)
+      onChange(id)
     }
   }
 
-  function isActive(id: T) {
+  function isActive(id: T): boolean {
     if (Array.isArray(value)) return value.includes(id)
     return value === id
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, Copy, Plus } from 'lucide-react'
+import { Download, Plus } from 'lucide-react'
 import type { GeneratedPack } from '@/types'
 import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
@@ -9,15 +9,7 @@ import { useGenerationStore } from '@/hooks/useGeneration'
 
 export function ActionBar({ pack }: { pack: GeneratedPack }) {
   const [showModal, setShowModal] = useState(false)
-  const [copied, setCopied] = useState(false)
   const resetState = useGenerationStore(s => s.resetState)
-
-  async function copyAllCaptions() {
-    const text = pack.images.map(img => `[${img.platformSpec.name}]\n${img.caption}\n${img.hashtags.join(' ')}\n\n---\n`).join('\n')
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   function handleNewPack() {
     resetState()
@@ -34,14 +26,6 @@ export function ActionBar({ pack }: { pack: GeneratedPack }) {
         >
           <Download size={14} />
           <span>Download ZIP</span>
-        </button>
-
-        <button
-          onClick={copyAllCaptions}
-          className="flex items-center gap-2 border border-[var(--output-border)] hover:bg-[var(--output-border)] text-[var(--output-text)] text-xs font-medium px-4 py-2.5 rounded-lg transition-colors h-9"
-        >
-          <Copy size={14} />
-          <span>{copied ? 'Copied!' : 'Copy all captions'}</span>
         </button>
 
         <button

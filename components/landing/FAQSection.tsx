@@ -38,7 +38,7 @@ export function FAQSection() {
   const [open, setOpen] = useState<number | null>(null)
 
   return (
-    <section aria-labelledby="faq-heading" className="py-28 px-6 border-t border-[var(--border)]">
+    <section id="faq" aria-labelledby="faq-heading" className="py-28 px-6 border-t border-[var(--border)]">
       <div className="max-w-3xl mx-auto">
 
         <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }}

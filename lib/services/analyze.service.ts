@@ -53,6 +53,21 @@ async function extractBackground(file: File): Promise<string> {
     throw new Error(`Photoroom error ${response.status}: ${text}`)
   }
 
+  // Photoroom adds a tiled watermark when credits are exhausted or on a free key.
+  // Detect via x-credits-charged header — if 0, the image is watermarked.
+  // Watermarked images cause Gemini to reproduce the "Photoroom" text as background texture.
+  const creditsCharged = response.headers.get('x-credits-charged')
+  const creditsRemaining = response.headers.get('x-credits-remaining')
+  if (creditsCharged === '0') {
+    console.warn(
+      '[photoroom] WARNING: x-credits-charged=0 — image will be watermarked.',
+      `Credits remaining: ${creditsRemaining ?? 'unknown'}.`,
+      'Top up at https://app.photoroom.com/api-dashboard',
+    )
+  } else {
+    console.log(`[photoroom] OK — credits charged: ${creditsCharged}, remaining: ${creditsRemaining}`)
+  }
+
   const arrayBuffer = await response.arrayBuffer()
   const filename = `extracted-${crypto.randomUUID()}.png`
 

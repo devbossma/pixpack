@@ -1,20 +1,21 @@
 'use client'
 import { useState } from 'react'
-import { useGenerationStore, selectCanGenerate, selectIsGenerating } from '@/hooks/useGeneration'
+import { useGenerationStore } from '@/hooks/useGeneration'
 import { UploadZone } from '@/components/upload/UploadZone'
 import { CountrySelector } from '@/components/audience/CountrySelector'
 import { PillSelector } from '@/components/ui/PillSelector'
-import { PlatformGrid } from '@/components/platforms/PlatformGrid'
-import { AGE_RANGES, GENDERS, INTERESTS, ANGLES, MARKETING_LANGUAGES } from '@/lib/config'
-import { Wand2, PanelLeftOpen, X, Globe } from 'lucide-react'
+import { PlatformSelector } from '@/components/platforms/PlatformSelector'
+import { AGE_RANGES, GENDERS, INTERESTS, MARKETING_LANGUAGES } from '@/lib/config'
+import { Wand2, PanelLeftOpen, X, Globe, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
-
 import { usePipeline } from '@/hooks/usePipeline'
+import type { Platform } from '@/types'
 
 export function Sidebar() {
   const { config, setConfig } = useGenerationStore()
   const { pipelineStatus, isGenerateEnabled, runPipeline } = usePipeline()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const isGenerating = pipelineStatus !== 'idle' && pipelineStatus !== 'done'
 
   const mainContent = (
     <>
@@ -22,16 +23,13 @@ export function Sidebar() {
       <SidebarSection label="Product photo">
         <UploadZone />
         <div className="mt-4">
-          <FieldLabel>Product Details & Features (Optional)</FieldLabel>
+          <FieldLabel>Product Details &amp; Features (Optional)</FieldLabel>
           <textarea
             value={config.productHint || ''}
             onChange={(e) => setConfig({ productHint: e.target.value })}
             placeholder="e.g., Waterproof smartwatch, genuine leather band, 24h battery life..."
-            className="w-full h-24 bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)] transition-colors resize-none mb-1.5"
+            className="w-full h-20 bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)] transition-colors resize-none mb-1"
           />
-          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed italic">
-            Give the AI a hint to generate hyper-accurate ad copy.
-          </p>
         </div>
       </SidebarSection>
 
@@ -44,11 +42,21 @@ export function Sidebar() {
           </div>
           <div>
             <FieldLabel>Age range</FieldLabel>
-            <PillSelector options={AGE_RANGES} value={config.ageRanges} onChange={v => setConfig({ ageRanges: v })} />
+            <PillSelector
+              options={AGE_RANGES}
+              value={config.ageRange}
+              onChange={v => setConfig({ ageRange: v })}
+              single
+            />
           </div>
           <div>
             <FieldLabel>Gender</FieldLabel>
-            <PillSelector options={GENDERS} value={config.gender} onChange={v => setConfig({ gender: v })} single />
+            <PillSelector
+              options={GENDERS}
+              value={config.gender}
+              onChange={v => setConfig({ gender: v })}
+              single
+            />
           </div>
           <div>
             <FieldLabel>Interest <span className="text-[var(--text-muted)] font-normal normal-case">(optional)</span></FieldLabel>
@@ -66,71 +74,75 @@ export function Sidebar() {
                 Marketing Language
               </div>
             </FieldLabel>
-            <PillSelector 
-              options={MARKETING_LANGUAGES} 
-              value={config.language} 
-              onChange={v => setConfig({ language: v })} 
-              single 
+            <PillSelector
+              options={MARKETING_LANGUAGES}
+              value={config.language}
+              onChange={v => setConfig({ language: v ?? 'auto' })}
+              single
             />
           </div>
         </div>
       </SidebarSection>
 
-      {/* Platforms */}
-      <SidebarSection label="Platforms">
-        <PlatformGrid value={config.platforms} onChange={v => setConfig({ platforms: v })} />
-      </SidebarSection>
-
-      {/* Shot style */}
-      <SidebarSection label="Shot style" noBorder>
-        <PillSelector options={ANGLES} value={config.angles} onChange={v => setConfig({ angles: v })} multi />
+      {/* Platform */}
+      <SidebarSection label="Platform" noBorder>
+        <PlatformSelector
+          value={config.platform}
+          onChange={(v: string) => setConfig({ platform: v as Platform })}
+        />
       </SidebarSection>
     </>
   )
 
   const footerContent = (
-    <div className="p-3 border-t border-[var(--sidebar-border)] bg-[var(--sidebar-bg)]">
+    <div className="p-3 border-t border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] space-y-2">
       <AnimatePresence mode="wait">
-        {pipelineStatus !== 'idle' && pipelineStatus !== 'done' ? (
+        {isGenerating ? (
           <motion.div
             key="active"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="w-full flex flex-col gap-2"
+            className="flex items-center gap-3 bg-[var(--surface2)] rounded-xl py-3 px-4 border border-[var(--border)]"
           >
-            <div className="w-full bg-[var(--surface2)] rounded-xl py-3 px-4 flex items-center gap-3 border border-[var(--border)]">
-              <div className="w-4 h-4 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
-              <span className="text-xs font-bold text-[var(--text)] uppercase tracking-wider">
-                {pipelineStatus === 'extracting' && 'Extracting...'}
-                {pipelineStatus === 'generating_creative' && 'Generating...'}
-                {pipelineStatus === 'rendering_images' && 'Rendering...'}
-              </span>
-            </div>
+            <div className="w-4 h-4 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin flex-shrink-0" />
+            <span className="text-xs font-semibold text-[var(--text)] truncate">
+              {pipelineStatus === 'extracting' && 'Analyzing product…'}
+              {pipelineStatus === 'generating_creative' && 'Building concepts…'}
+              {pipelineStatus === 'rendering_images' && 'Rendering images…'}
+            </span>
           </motion.div>
         ) : (
-          <motion.div
+          <motion.button
             key="cta"
-            initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            onClick={() => { runPipeline(); setMobileOpen(false) }}
+            disabled={!isGenerateEnabled}
+            className={[
+              'w-full flex items-center justify-center gap-2 font-bold text-sm py-3 rounded-xl transition-all',
+              isGenerateEnabled
+                ? 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_20px_rgba(255,77,28,0.2)] hover:shadow-[0_0_28px_rgba(255,77,28,0.3)] active:scale-[0.98]'
+                : 'bg-[var(--surface2)] text-[var(--text-muted)] border border-[var(--border)] cursor-not-allowed',
+            ].join(' ')}
+            aria-label="Generate your pack"
           >
-            <button
-              onClick={() => { runPipeline(); setMobileOpen(false) }}
-              disabled={!isGenerateEnabled}
-              className={`w-full flex items-center justify-center gap-2 font-display font-bold text-sm py-3 rounded-xl transition-all
-                ${isGenerateEnabled
-                  ? 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_20px_rgba(255,77,28,0.2)]'
-                  : 'bg-[var(--surface2)] text-[var(--text-muted)] border border-[var(--border)] cursor-not-allowed'
-                }`}
-              aria-label="Generate pack"
-            >
-              <Wand2 size={15} />
-              {pipelineStatus === 'done' && !isGenerateEnabled ? 'Up to date' : 'Generate pack'}
-            </button>
-          </motion.div>
+            {pipelineStatus === 'done' && !isGenerateEnabled ? (
+              <>
+                <RefreshCw size={14} />
+                Change settings to regenerate
+              </>
+            ) : (
+              <>
+                <Wand2 size={14} />
+                Generate your pack
+              </>
+            )}
+          </motion.button>
         )}
       </AnimatePresence>
 
-      {pipelineStatus === 'idle' && !isGenerateEnabled && (
-        <p className="text-[10px] text-center text-[var(--text-muted)] mt-3 leading-relaxed">
-          Configure market, platform &amp; shot style to unlock generation
+      {!isGenerating && !isGenerateEnabled && pipelineStatus !== 'done' && (
+        <p className="text-[10px] text-center text-[var(--text-muted)] leading-relaxed">
+          Upload a photo, pick a platform &amp; audience to unlock
         </p>
       )}
     </div>
@@ -215,4 +227,3 @@ function SidebarSection({ label, children, noBorder }: {
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <span className="block text-xs text-[var(--text-secondary)] mb-1.5">{children}</span>
 }
-

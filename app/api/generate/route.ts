@@ -84,12 +84,10 @@ export async function POST(request: NextRequest) {
         // Send the pack metadata (everything except images — already sent individually)
         send({
           type: 'meta',
-          productDescription: pack.productDescription,
-          postingSchedule: pack.postingSchedule,
           audience: pack.audience,
-          totalScore: pack.totalScore,
           generatedAt: pack.generatedAt,
           id: pack.id,
+          platform: pack.platform,
         })
 
         send({ type: 'done' })

@@ -1,176 +1,196 @@
-# Skill: Types & Validation Schemas
+# Skill: Types & Validation (V2)
 
-Define all types in `types/index.ts` and all Zod schemas in `lib/validation.ts` BEFORE writing any feature code. This file is the contract the entire codebase depends on.
+Read this before writing any TypeScript types or Zod schemas.
 
 ---
 
-## `types/index.ts` — FULL TYPE DEFINITIONS
+## CORE TYPES (lib/types.ts)
 
 ```ts
-// ─── AUDIENCE ───────────────────────────────────────────────────────────────
+// ─── User configuration ──────────────────────────────────────────────────────
 
-export type AgeRange = '18-24' | '25-34' | '35-44' | '45-60'
-export type Gender = 'women' | 'men' | 'mixed'
-export type Geography = 'morocco' | 'gulf' | 'france' | 'global'
-export type Lifestyle = 'urban' | 'luxury' | 'sporty' | 'casual'
-
-export interface AudienceConfig {
-  ageRange: AgeRange
-  gender: Gender
-  geography: Geography
-  lifestyle: Lifestyle
+export interface UserConfig {
+  platform:  string    // SINGLE platform — not an array (V2 change)
+  country?:  string
+  ageRange?: string
+  gender?:   string
+  interest?: string
+  angle?:    string    // optional user hint — server uses all 4 angles regardless
 }
 
-// ─── PLATFORMS ──────────────────────────────────────────────────────────────
-
-export type Platform =
-  | 'instagram_post'
-  | 'instagram_story'
-  | 'tiktok'
-  | 'facebook_post'
-  | 'shopify_product'
-  | 'web_banner'
-
-export interface PlatformSpec {
-  id: Platform
-  name: string
-  icon: string
-  width: number
-  height: number
-  aspectRatio: string   // e.g. "1:1", "9:16", "16:9"
-}
-
-// ─── ANGLES ─────────────────────────────────────────────────────────────────
-
-export type Angle = 'lifestyle' | 'flatlay' | 'closeup' | 'model' | 'hero'
-
-// ─── PRODUCT ANALYSIS (from Gemini Vision) ──────────────────────────────────
+// ─── Product analysis ─────────────────────────────────────────────────────────
 
 export interface ProductAnalysis {
-  product_type: string
-  colors: string[]
-  material: string
-  style: string
-  gender_target: string
-  use_case: string
-  key_features: string[]
-  suggested_scenes: string[]
+  physical_features:       string[]
+  materials:               string[]
+  style:                   string
+  selling_points:          string[]
+  product_type?:           string
+  style_aesthetic?:        string
+  target_customer?:        string
+  use_cases?:              string[]
+  key_selling_points?:     string[]
+  visual_mood?:            string
+  competitor_positioning?: string
 }
 
-// ─── IMAGE PROMPTS ───────────────────────────────────────────────────────────
-
-export interface ImagePrompt {
-  id: string
-  angle: Angle
-  platform: Platform
-  aspectRatio: string
-  prompt: string
-  negativePrompt: string
+export interface ProductProfile extends ProductAnalysis {
+  extractedImageUrl: string
+  productHint?:      string
 }
 
-// ─── GENERATED OUTPUT ───────────────────────────────────────────────────────
+// ─── Ad copy ─────────────────────────────────────────────────────────────────
+
+export interface AdCopies {
+  awareness:     string  // top-of-funnel hook
+  consideration: string  // mid-funnel sales argument (longest)
+  conversion:    string  // CTA with urgency
+}
+
+// ─── Scene / variation ───────────────────────────────────────────────────────
+
+export interface SceneLayout {
+  variation:    number  // 1–4
+  image_prompt: string
+  angle:        string  // lifestyle | hero | context | closeup
+}
+
+export interface Scene extends SceneLayout {
+  ad_copies: AdCopies
+}
+
+// ─── Creative Director output ─────────────────────────────────────────────────
+
+export interface CreativeJson {
+  platform:  string
+  variations: SceneLayout[]   // exactly 4
+  posting_schedule: {
+    best_day:  string
+    best_time: string
+    reasoning: string
+  }
+}
+
+// ─── Generated image ──────────────────────────────────────────────────────────
 
 export interface GeneratedImage {
-  id: string
-  angle: Angle
-  platform: Platform
-  platformSpec: PlatformSpec
-  imageBase64: string         // "data:image/png;base64,..."
-  caption: string
-  hashtags: string[]
-  status: 'done' | 'error'
-  error?: string
+  id:          string
+  variation:   number        // 1–4
+  platform:    string
+  angle:       string        // lifestyle | hero | context | closeup
+  imageBase64: string | null
+  adCopy:      AdCopies
+  status:      'done' | 'error'
+  error?:      string
 }
 
-// ─── API CONTRACTS ───────────────────────────────────────────────────────────
+// ─── Full pack ────────────────────────────────────────────────────────────────
 
-export interface GenerationRequest {
-  imageBase64: string
-  mimeType: 'image/jpeg' | 'image/png' | 'image/webp'
-  audience: AudienceConfig
-  platforms: Platform[]
-  angles: Angle[]
-}
-
-export interface GenerationResponse {
-  images: GeneratedImage[]
-  totalRequested: number
-  totalGenerated: number
+export interface GeneratedPack {
+  id:          string
+  platform:    string
+  images:      GeneratedImage[]  // exactly 4
+  audience:    UserConfig
   generatedAt: string
 }
 
-export interface ApiResponse<T> {
-  data: T | null
-  error: string | null
-}
-
-// ─── UI STATE MACHINES ───────────────────────────────────────────────────────
-
-export type UploadState =
-  | { status: 'idle' }
-  | { status: 'dragging' }
-  | { status: 'processing'; message: string }
-  | { status: 'ready'; previewUrl: string; base64: string; mimeType: string }
-  | { status: 'error'; message: string }
+// ─── Generation state machine ─────────────────────────────────────────────────
 
 export type GenerationState =
   | { status: 'idle' }
-  | { status: 'generating'; step: number; progress: number }
-  | { status: 'done'; images: GeneratedImage[] }
-  | { status: 'error'; message: string; retryable: boolean }
+  | { status: 'analyzing' }
+  | { status: 'generating'; stage: number; stageMessage: string; images: GeneratedImage[] }
+  | { status: 'done'; pack: GeneratedPack }
+  | { status: 'error'; message: string }
 ```
 
 ---
 
-## `lib/validation.ts` — ZOD SCHEMAS
+## ZOD SCHEMAS (lib/validation.ts)
 
 ```ts
 import { z } from 'zod'
 
-export const AudienceConfigSchema = z.object({
-  ageRange: z.enum(['18-24', '25-34', '35-44', '45-60']),
-  gender: z.enum(['women', 'men', 'mixed']),
-  geography: z.enum(['morocco', 'gulf', 'france', 'global']),
-  lifestyle: z.enum(['urban', 'luxury', 'sporty', 'casual']),
+// V2: platform is string, not array
+export const UserConfigSchema = z.object({
+  platform:  z.string().min(1),
+  country:   z.string().optional(),
+  ageRange:  z.string().optional(),
+  gender:    z.string().optional(),
+  interest:  z.string().optional(),
+  angle:     z.string().optional(),
 })
 
-export const PlatformSchema = z.enum([
-  'instagram_post',
-  'instagram_story',
-  'tiktok',
-  'facebook_post',
-  'shopify_product',
-  'web_banner',
-])
-
-export const AngleSchema = z.enum(['lifestyle', 'flatlay', 'closeup', 'model', 'hero'])
-
-export const GenerationRequestSchema = z.object({
-  imageBase64: z.string().min(100, 'Image data is missing or too small'),
-  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
-  audience: AudienceConfigSchema,
-  platforms: z.array(PlatformSchema).min(1, 'Select at least one platform').max(6),
-  angles: z.array(AngleSchema).min(1, 'Select at least one angle').max(5),
+export const GenerateRequestSchema = z.object({
+  productProfile:    z.object({
+    extractedImageUrl: z.string().url(),
+    productHint:       z.string().optional(),
+  }).passthrough(),
+  userConfig:        UserConfigSchema,
+  marketingLanguage: z.string().default('auto'),
 })
 
-// Usage in API route:
-// const validated = GenerationRequestSchema.parse(await req.json())
-// — throws ZodError with field-level messages if invalid
+export const DownloadRequestSchema = z.object({
+  email:      z.string().email(),
+  packId:     z.string().uuid(),
+  imageCount: z.number().int().min(1).max(4),
+  platforms:  z.array(z.string()),   // kept for compatibility
+})
 ```
 
 ---
 
-## `lib/platforms.ts` — PLATFORM CONFIG
+## PLATFORM SPECS (lib/platforms.ts)
 
 ```ts
-import type { Platform, PlatformSpec } from '@/types'
-
 export const PLATFORM_SPECS = {
-  instagram_post:  { id: 'instagram_post',  name: 'Instagram Post',  icon: '📸', width: 1080, height: 1080, aspectRatio: '1:1'  },
-  instagram_story: { id: 'instagram_story', name: 'Instagram Story', icon: '📖', width: 1080, height: 1920, aspectRatio: '9:16' },
-  tiktok:          { id: 'tiktok',          name: 'TikTok',          icon: '🎵', width: 1080, height: 1920, aspectRatio: '9:16' },
-  facebook_post:   { id: 'facebook_post',   name: 'Facebook Post',   icon: '👤', width: 1200, height: 630,  aspectRatio: '16:9' },
-  shopify_product: { id: 'shopify_product', name: 'Shopify Product', icon: '🛍️', width: 800,  height: 800,  aspectRatio: '1:1'  },
-  web_banner:      { id: 'web_banner',      name: 'Web Banner',      icon: '🌐', width: 1920, height: 600,  aspectRatio: '16:9' },
-} satisfies Record<Platform, PlatformSpec>
+  instagram_post:  { label: 'Instagram Post',   aspectRatio: '1:1',   width: 1080, height: 1080 },
+  instagram_story: { label: 'Instagram Story',  aspectRatio: '9:16',  width: 1080, height: 1920 },
+  tiktok:          { label: 'TikTok',           aspectRatio: '9:16',  width: 1080, height: 1920 },
+  facebook_post:   { label: 'Facebook Post',    aspectRatio: '4:3',   width: 1200, height: 900  },
+  shopify_product: { label: 'Shopify Product',  aspectRatio: '1:1',   width: 800,  height: 800  },
+  web_banner:      { label: 'Web Banner',       aspectRatio: '16:9',  width: 1920, height: 1080 },
+} as const
+
+export type PlatformId = keyof typeof PLATFORM_SPECS
 ```
+
+---
+
+## VARIATION HELPERS
+
+```ts
+export const VARIATION_LETTERS = ['A', 'B', 'C', 'D'] as const
+
+export function variationLetter(n: number): string {
+  return VARIATION_LETTERS[n - 1] ?? 'X'
+}
+
+export const ANGLE_COLORS = {
+  lifestyle: { bg: 'bg-blue-500/20',   text: 'text-blue-300'   },
+  hero:      { bg: 'bg-purple-500/20', text: 'text-purple-300' },
+  context:   { bg: 'bg-amber-500/20',  text: 'text-amber-300'  },
+  closeup:   { bg: 'bg-green-500/20',  text: 'text-green-300'  },
+} as const
+```
+
+---
+
+## CRITICAL V2 CHANGES FROM V1
+
+| Field | V1 | V2 |
+|---|---|---|
+| `UserConfig.platforms` | `string[]` (array) | **REMOVED** |
+| `UserConfig.platform` | did not exist | `string` (single) |
+| `GeneratedImage.platform` | main identifier | supplementary |
+| `GeneratedImage.variation` | did not exist | `number` 1–4 |
+| `GeneratedImage.angle` | did not exist | `string` |
+| `GeneratedImage.adCopy` | on `Scene` | directly on `GeneratedImage` |
+| `GeneratedImage.caption` | `string` | **REMOVED** (use `adCopy.awareness`) |
+| `GeneratedImage.hashtags` | `string[]` | **REMOVED** |
+| `GeneratedImage.engagementScore` | object | **REMOVED** |
+| `GeneratedPack.productDescription` | Shopify data | **REMOVED** |
+| `GeneratedPack.postingSchedule` | array | **REMOVED** |
+| `GeneratedPack.totalScore` | number | **REMOVED** |
+| `GeneratedPack.platform` | did not exist | `string` |
+| `GeneratedPack.images` | array, 1 per platform | array, 4 variations |

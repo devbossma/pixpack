@@ -1,8 +1,14 @@
 /**
  * lib/types.ts
  *
- * Shared domain types for PixPack API routes.
- * Import from here — never redefine locally.
+ * Shared domain types for PixPack.
+ *
+ * NEW MODEL (v2):
+ *   User picks ONE platform.
+ *   We generate 4 image variations for that platform.
+ *   Each variation gets 3 ad copy variants (awareness / consideration / conversion).
+ *   No Shopify listing. No posting schedule.
+ *   Focus: A/B testing creative for paid ads.
  */
 
 // ─── Product analysis (output of /api/analyze) ───────────────────────────────
@@ -12,6 +18,13 @@ export interface ProductAnalysis {
   materials: string[]
   style: string
   selling_points: string[]
+  product_type?: string
+  style_aesthetic?: string
+  target_customer?: string
+  use_cases?: string[]
+  key_selling_points?: string[]
+  visual_mood?: string
+  competitor_positioning?: string
 }
 
 export interface AnalyzeResponse {
@@ -19,10 +32,10 @@ export interface AnalyzeResponse {
   analysis: ProductAnalysis
 }
 
-// ─── Pack generation (input to /api/generate) ────────────────────────────────
+// ─── User config (input to /api/generate) ────────────────────────────────────
 
 export interface UserConfig {
-  platforms: string[]
+  platform: string    // single platform — e.g. 'instagram_post'
   country?: string
   ageRange?: string
   gender?: string
@@ -35,34 +48,31 @@ export interface ProductProfile extends ProductAnalysis {
   productHint?: string
 }
 
-// ─── Creative Director output (internal) ─────────────────────────────────────
+// ─── Ad copy for one variation ────────────────────────────────────────────────
 
 export interface AdCopies {
-  awareness: string   // 2-3 sentences for most platforms
-  consideration: string   // 4-6 sentences — the full sales argument
-  conversion: string   // 1-2 sentences — punchy CTA
+  awareness: string  // top-of-funnel — emotion/identity hook
+  consideration: string  // mid-funnel — full product argument, longest field
+  conversion: string  // bottom-funnel — punchy CTA with urgency
 }
 
-// SceneLayout is what the Creative Director returns — image prompt only, no copy
+// ─── Scene: one image variation with its copy ─────────────────────────────────
+
 export interface SceneLayout {
-  platform: string
-  image_prompt: string
+  variation: number  // 1-4
+  image_prompt: string  // scene description for the image model
+  angle: string  // the visual angle used for this variation
 }
 
-// Scene is the full scene with copy attached (after Stage 3)
 export interface Scene extends SceneLayout {
   ad_copies: AdCopies
 }
 
+// ─── Creative Director output (Stage 1) ──────────────────────────────────────
+
 export interface CreativeJson {
-  scenes: SceneLayout[]   // ad_copies are NOT in this — added by Stage 3
-  shopify_data: {
-    title: string
-    tagline: string
-    description: string
-    seo_meta_title: string
-    seo_meta_description: string
-  }
+  platform: string
+  variations: SceneLayout[]  // exactly 4, one per A/B test variation
   posting_schedule: {
     best_day: string
     best_time: string
@@ -70,68 +80,25 @@ export interface CreativeJson {
   }
 }
 
-// ─── Generated pack (output of /api/generate) ────────────────────────────────
-
-export interface EngagementScore {
-  score: number
-  label: string
-  reason: string
-  tip: string
-}
+// ─── Generated image (one variation result) ──────────────────────────────────
 
 export interface GeneratedImage {
   id: string
+  variation: number        // 1-4
   platform: string
+  angle: string
   imageBase64: string | null
-  caption: string
-  hashtags: string[]
   adCopy: AdCopies
-  engagementScore: EngagementScore
   status: 'done' | 'error'
   error?: string
 }
 
-export interface PostingSlot {
-  platform: string
-  bestDay: string
-  bestTime: string
-  timezone: string
-  reason: string
-}
-
-export interface ProductDescription {
-  title: string
-  subtitle: string
-  bulletFeatures: string[]
-  seoMetaTitle: string
-  seoMetaDescription: string
-}
+// ─── Full pack output ─────────────────────────────────────────────────────────
 
 export interface GeneratedPack {
   id: string
-  images: GeneratedImage[]
-  productDescription: ProductDescription
-  postingSchedule: PostingSlot[]
+  platform: string
+  images: GeneratedImage[]  // 4 variations
   audience: UserConfig
-  totalScore: number
   generatedAt: string
-}
-
-// ─── Extended product analysis (richer fields from updated analyze prompt) ───
-
-export interface ProductAnalysis {
-  // Original fields
-  physical_features: string[]
-  materials: string[]
-  style: string        // kept for backward compat
-  selling_points: string[]      // kept for backward compat
-
-  // New richer fields
-  product_type?: string
-  style_aesthetic?: string
-  target_customer?: string
-  use_cases?: string[]
-  key_selling_points?: string[]
-  visual_mood?: string
-  competitor_positioning?: string
 }

@@ -94,10 +94,8 @@ export async function POST(request: NextRequest) {
         id: pack.id,
         email: email.toLowerCase(),
         images_data: pack.images,
-        product_description: pack.productDescription,
-        posting_schedule: pack.postingSchedule,
+        platform: pack.platform,
         audience: pack.audience,
-        total_score: pack.totalScore,
         expires_at: expiresAt,
       })
       .select('id')
