@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
         // We don't await this — the response goes back to the client immediately
         const locked = await isLocked()
         if (!locked) {
-            // const workerUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/queue/worker`
-            const workerUrl = `http://localhost:3000/api/queue/worker`
+            const workerUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/queue/worker`
+            // const workerUrl = `http://localhost:3000/api/queue/worker`
             fetch(workerUrl, {
                 method: 'POST',
                 headers: {
