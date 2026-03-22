@@ -131,6 +131,7 @@ export type UploadState =
 
 export type GenerationState =
   | { status: 'idle' }
-  | { status: 'generating'; step: number; progress: number }
+  | { status: 'analyzing' }
+  | { status: 'generating'; stage: number; stageMessage: string; images: GeneratedImage[] }
   | { status: 'done'; pack: GeneratedPack }
-  | { status: 'error'; message: string; retryable: boolean }
+  | { status: 'error'; message: string; retryable?: boolean }

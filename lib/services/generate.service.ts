@@ -35,6 +35,7 @@
  * in the route handler, or advise limiting platforms to 4.
  */
 
+import { Modality } from '@google/genai'
 import { createVertexClient } from '../vertex-client'
 import { retryOnRateLimit, delay } from '../concurrency'
 import { buildCreativeDirectorPrompt } from '../prompts/creative-director.prompt'
@@ -68,18 +69,28 @@ const ASPECT_RATIOS: Record<string, string> = {
 
 // ---- Public entry point -----------------------------------------------------
 
+export interface GenerateCallbacks {
+  onStage?: (stage: number, message: string) => void
+  onImage?: (image: GeneratedImage) => void
+}
+
 export interface GenerateInput {
   productProfile: ProductProfile
   userConfig: UserConfig
   marketingLanguage: string
 }
 
-export async function generatePack(input: GenerateInput): Promise<GeneratedPack> {
+export async function generatePack(
+  input: GenerateInput,
+  callbacks: GenerateCallbacks = {},
+): Promise<GeneratedPack> {
   const { productProfile, userConfig, marketingLanguage } = input
+  const { onStage, onImage } = callbacks
   const ai = createVertexClient()
 
   // Stage 1 - Creative Director
   console.log('[generate] Stage 1: running Creative Director...')
+  onStage?.(1, 'Analysing product and building scene concepts...')
   const creativeJson = await runCreativeDirector(ai, productProfile, userConfig, marketingLanguage)
   console.log(`[generate] Stage 1 done - ${creativeJson.scenes.length} scenes`)
 
@@ -88,37 +99,50 @@ export async function generatePack(input: GenerateInput): Promise<GeneratedPack>
   const { productBase64, productMimeType } = await fetchProductImage(productProfile.extractedImageUrl)
   console.log(`[generate] Image ready - ${productMimeType}, ~${Math.round(productBase64.length / 1024)}KB`)
 
-  // Stage 2.5 - Generate full-length ad copy (dedicated text-only call, parallel to image prep)
-  // This runs BEFORE image generation so copy is ready when images complete.
-  // Separated from Stage 1 because the Creative Director JSON was compressing
-  // copy to fit the token budget. This call has one job: write long-form copy.
+  // Stage 2 - Generate full-length ad copy
   console.log('[generate] Stage 2: generating full-length ad copy...')
+  onStage?.(2, 'Writing ad copy for each platform...')
   const scenesWithCopy: Scene[] = await generateAdCopy(
     ai, creativeJson.scenes, productProfile, userConfig, marketingLanguage
   )
   console.log('[generate] Stage 2 done - ad copy ready')
 
-  // Stage 3 - Sequential image generation with adaptive gap
+  // Stage 3 - Sequential image generation — stream each image as it completes
   console.log(`[generate] Stage 3: generating ${scenesWithCopy.length} images...`)
-  const imageResults = await sequentialImages(
-    scenesWithCopy.map((scene, index) => ({
-      task: () => retryOnRateLimit(
+  onStage?.(3, `Generating ${scenesWithCopy.length} images...`)
+
+  const images: GeneratedImage[] = []
+
+  for (let index = 0; index < scenesWithCopy.length; index++) {
+    const scene = scenesWithCopy[index]
+    const preGapMs = PRE_IMAGE_GAP_MS[index] ?? DEFAULT_GAP_MS
+    const label = `image ${index + 1}/${scenesWithCopy.length} (${scene.platform})`
+
+    if (preGapMs > 0) {
+      console.log(`[stage2] Waiting ${preGapMs / 1000}s before ${label}...`)
+      await delay(preGapMs)
+    }
+
+    console.log(`[stage2] Starting ${label}`)
+
+    let image: GeneratedImage
+    try {
+      image = await retryOnRateLimit(
         () => generateSingleImage(ai, scene, productBase64, productMimeType, index, userConfig),
-        { maxAttempts: 4, backoffMs: 20_000, label: `scene-${index}(${scene.platform})` },
-      ),
-      preGapMs: PRE_IMAGE_GAP_MS[index] ?? DEFAULT_GAP_MS,
-      label: `image ${index + 1}/${creativeJson.scenes.length} (${scene.platform})`,
-    })),
-  )
+        { maxAttempts: 2, backoffMs: 20_000, label: `scene-${index}(${scene.platform})` },
+      )
+      console.log(`[stage2] Scene ${index} (${scene.platform}) OK`)
+    } catch (err: unknown) {
+      const reason = err instanceof Error ? err.message : 'Image generation failed'
+      console.error(`[generate] Scene ${index} (${scene.platform}) permanently failed:`, reason)
+      image = buildErrorCard(index, scene.platform, reason)
+    }
 
-  // Assemble images - error cards for permanent failures
-  const images: GeneratedImage[] = imageResults.map((result, index) => {
-    if (result.status === 'fulfilled') return result.value
+    images.push(image)
 
-    const reason = result.reason instanceof Error ? result.reason.message : 'Image generation failed'
-    console.error(`[generate] Scene ${index} (${creativeJson.scenes[index]?.platform}) permanently failed:`, reason)
-    return buildErrorCard(index, creativeJson.scenes[index]?.platform ?? 'unknown', reason)
-  })
+    // Stream this image to the client immediately — don't wait for the rest
+    onImage?.(image)
+  }
 
   const successCount = images.filter(img => img.status === 'done').length
   console.log(`[generate] Stage 3 done - ${successCount}/${images.length} images OK`)
@@ -221,7 +245,7 @@ async function generateSingleImage(
       },
     ],
     config: {
-      responseModalities: ['IMAGE', 'TEXT'],
+      responseModalities: [Modality.IMAGE, Modality.TEXT],
       imageConfig: { aspectRatio },
       temperature: 1,
       topP: 0.95,

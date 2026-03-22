@@ -62,12 +62,12 @@ export function usePipeline() {
 
   // Sync pipeline status with generation steps
   useEffect(() => {
-    if (generationState.status === 'generating') {
-      if (generationState.step === 0 || generationState.step === 1) {
-        if (pipelineStatus !== 'extracting') setPipelineStatus('extracting')
-      } else if (generationState.step === 2 || generationState.step === 3) {
+    if (generationState.status === 'analyzing') {
+      if (pipelineStatus !== 'extracting') setPipelineStatus('extracting')
+    } else if (generationState.status === 'generating') {
+      if (generationState.stage === 1 || generationState.stage === 2) {
         if (pipelineStatus !== 'generating_creative') setPipelineStatus('generating_creative')
-      } else if (generationState.step === 4 || generationState.step === 5) {
+      } else if (generationState.stage >= 3) {
         if (pipelineStatus !== 'rendering_images') setPipelineStatus('rendering_images')
       }
     } else if (generationState.status === 'done') {

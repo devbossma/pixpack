@@ -1,7 +1,7 @@
 'use client'
 
 import { create } from 'zustand'
-import type { GenerationConfig, GenerationState, UploadState, GeneratedPack, PipelineStatus } from '@/types'
+import type { GenerationConfig, GenerationState, UploadState, GeneratedPack, GeneratedImage, PipelineStatus, ProductDescription, PostingSchedule } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
 
 interface GenerationStore {
@@ -27,10 +27,9 @@ interface GenerationStore {
   resetState: () => void
 }
 
+let globalAbortController: AbortController | null = null
+
 // ─── Selectors ──────────────────────────────────────────────────────────────
-// Use these with useGenerationStore(selector) so components re-render reactively.
-// DO NOT put canGenerate / isGenerating in the store state — Zustand's shallow
-// merge strips getter descriptors on every set(), making them stale forever.
 export const selectCanGenerate = (s: GenerationStore): boolean =>
   s.uploadState.status === 'ready' &&
   s.config.regionId !== null &&
@@ -40,6 +39,7 @@ export const selectCanGenerate = (s: GenerationStore): boolean =>
   s.config.angles.length >= 1
 
 export const selectIsGenerating = (s: GenerationStore): boolean =>
+  s.generationState.status === 'analyzing' ||
   s.generationState.status === 'generating'
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -65,7 +65,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
   uploadState: { status: 'idle' },
   setUploadState: (s) => set((state) => {
-    // If we're setting a new ready state with a different image, reset processing
     const isNewImage = state.uploadState.status === 'ready' && s.status === 'ready' && s.base64 !== state.uploadState.base64;
     return {
       uploadState: s,
@@ -90,10 +89,13 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     if (!selectCanGenerate(state) || selectIsGenerating(state)) return
     const { config, uploadState } = state
 
-    // Ensure we have the image data
     if (uploadState.status !== 'ready') return
 
-    set({ generationState: { status: 'generating', step: 0, progress: 0 } })
+    // Cancel any in-progress generation
+    globalAbortController?.abort()
+    globalAbortController = new AbortController()
+
+    set({ generationState: { status: 'analyzing' } })
 
     try {
       let analysis = state.analysis
@@ -103,7 +105,6 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         // 1. Prepare Data for "Analyze & Extract"
         const formData = new FormData()
 
-        // Convert base64 back to a blob for Photoroom/Gemini
         const byteCharacters = atob(uploadState.base64)
         const byteNumbers = new Array(byteCharacters.length)
         for (let i = 0; i < byteCharacters.length; i++) {
@@ -117,34 +118,13 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         formData.append('language', config.language)
         formData.append('regionId', config.regionId || 'global')
 
-        // 2. Hit the "Brain" API (Steps 0 and 1: Background removal + Analysis)
-        const apiPromise = fetch('/api/analyze', {
+        // 2. Hit the "Brain" API (Background removal + Analysis)
+        const response = await fetch('/api/analyze', {
           method: 'POST',
           body: formData,
+          signal: globalAbortController.signal,
         })
 
-        // Fake progress for step 0 (Background Removal)
-        for (let j = 0; j < 35; j++) {
-          await new Promise(r => setTimeout(r, 60))
-          set(s => ({
-            generationState: s.generationState.status === 'generating'
-              ? { ...s.generationState, progress: (j / 70) * (100 / 6) }
-              : s.generationState
-          }))
-        }
-        set(s => ({ generationState: s.generationState.status === 'generating' ? { ...s.generationState, step: 1 } : s.generationState }))
-
-        // Fake progress for step 1 (Analysis)
-        for (let j = 35; j < 70; j++) {
-          await new Promise(r => setTimeout(r, 60))
-          set(s => ({
-            generationState: s.generationState.status === 'generating'
-              ? { ...s.generationState, progress: (j / 70) * (100 / 6) + (100 / 6) }
-              : s.generationState
-          }))
-        }
-
-        const response = await apiPromise
         if (!response.ok) {
           const responseText = await response.text()
           let errorMsg = 'Failed to analyze product'
@@ -169,84 +149,125 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         extractedImageUrl = result.extractedImageUrl
 
         set({ isProcessed: true, analysis, extractedImageUrl })
-      } else {
-        // Skip Brain steps and jump to step 2
-        set({ generationState: { status: 'generating', step: 2, progress: 33 } })
       }
 
-      // 3. Hit the "Generate Pack" API (Steps 2 to 5: Creative + Rendering)
-      
-      // Parallel simulated progress for the long generation task (~45-60s)
-      const startTime = Date.now()
-      const simulateProgress = setInterval(() => {
-        const elapsed = (Date.now() - startTime) / 1000
-        let newStep = 2 // Directing scenes
-        
-        if (elapsed > 5) newStep = 3 // Writing ad copy
-        if (elapsed > 15) newStep = 4 // Rendering images (Takes longest)
-        if (elapsed > 42) newStep = 5 // Assembling
-        
-        // Progress interpolates cleanly up to 98%
-        const renderProgress = Math.min(98, 33 + (elapsed / 50) * 65)
-        
-        const currentState = get().generationState
-        if (currentState.status === 'generating') {
-          set({ generationState: { ...currentState, step: newStep, progress: renderProgress } })
+      // 3. Hit the "Generate Pack" API via SSE
+      set({ generationState: { status: 'generating', stage: 1, stageMessage: 'Starting...', images: [] } })
+
+      const receivedImages: GeneratedImage[] = []
+      let packMeta: Omit<GeneratedPack, 'images'> | null = null
+
+      const generateResponse = await fetch('/api/generate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packId: crypto.randomUUID(),
+          productProfile: { ...analysis, extractedImageUrl },
+          userConfig: {
+            platforms: config.platforms,
+            country: config.regionId ?? undefined,
+            ageRange: config.ageRanges[0] ?? undefined,
+            gender: config.gender ?? undefined,
+            interest: config.interest ?? undefined,
+            angle: config.angles[0] ?? undefined,
+          },
+          marketingLanguage: config.language
+        }),
+        signal:  globalAbortController.signal,
+      })
+
+      if (!generateResponse.ok || !generateResponse.body) {
+        const err = await generateResponse.json().catch(() => ({ error: 'Request failed' }))
+        throw new Error(err.error ?? 'Generation failed')
+      }
+
+      // Read SSE stream
+      const reader  = generateResponse.body.getReader()
+      const decoder = new TextDecoder()
+      let   buffer  = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+
+        const events = buffer.split('\n\n')
+        buffer = events.pop() ?? ''  // keep incomplete last chunk
+
+        for (const eventStr of events) {
+          const line = eventStr.trim()
+          if (!line.startsWith('data: ')) continue
+
+          let event: Record<string, unknown>
+          try {
+            event = JSON.parse(line.slice(6))
+          } catch {
+            continue
+          }
+
+          if (event.type === 'stage') {
+            set(prev => {
+              const prevGen = prev.generationState
+              return {
+                generationState: {
+                  status: 'generating',
+                  stage: event.stage as number,
+                  stageMessage: event.message as string,
+                  images: prevGen.status === 'generating' ? prevGen.images : [],
+                }
+              }
+            })
+          }
+
+          if (event.type === 'image') {
+            const image = event.image as GeneratedImage
+            receivedImages.push(image)
+
+            set(prev => {
+              const prevGen = prev.generationState
+              return {
+                generationState: {
+                  status: 'generating',
+                  stage: prevGen.status === 'generating' ? prevGen.stage : 3,
+                  stageMessage: prevGen.status === 'generating' ? prevGen.stageMessage : 'Generating images...',
+                  images: [...receivedImages],
+                }
+              }
+            })
+          }
+
+          if (event.type === 'meta') {
+            packMeta = {
+              id:                 event.id as string,
+              productDescription: event.productDescription as ProductDescription,
+              postingSchedule:    event.postingSchedule    as PostingSchedule[],
+              audience:           event.audience           as GenerationConfig,
+              totalScore:         event.totalScore         as number,
+              generatedAt:        event.generatedAt        as string,
+            }
+          }
+
+          if (event.type === 'done') {
+            if (!packMeta) throw new Error('Stream ended without pack metadata')
+
+            const pack: GeneratedPack = {
+              ...packMeta,
+              images: receivedImages,
+            }
+
+            set({ generationState: { status: 'done', pack } })
+          }
+
+          if (event.type === 'error') {
+            throw new Error(event.message as string)
+          }
         }
-      }, 500)
-
-      let generateResponse;
-      try {
-        generateResponse = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            packId: crypto.randomUUID(),
-            productProfile: { ...analysis, extractedImageUrl },
-            userConfig: {
-              platforms: config.platforms,
-              country: config.regionId ?? undefined,
-              ageRange: config.ageRanges[0] ?? undefined,
-              gender: config.gender ?? undefined,
-              interest: config.interest ?? undefined,
-              angle: config.angles[0] ?? undefined,
-            },
-            marketingLanguage: config.language
-          })
-        })
-      } finally {
-        clearInterval(simulateProgress)
       }
 
-      if (!generateResponse.ok) {
-        const responseText = await generateResponse.text()
-        let errorMsg = 'Failed to generate pack assets'
-        try {
-          const errStatus = JSON.parse(responseText)
-          if (errStatus.error) errorMsg = errStatus.error
-        } catch {
-          errorMsg = `Server Error (${generateResponse.status}): Generation took too long or crashed. Please try again.`
-        }
-        throw new Error(errorMsg)
-      }
-
-      // Snap to 100% just before completion
-      set({ generationState: { status: 'generating', step: 5, progress: 100 } })
-      await new Promise(r => setTimeout(r, 600))
-
-      const responseText = await generateResponse.text()
-      let pack;
-      try {
-        const parsed = JSON.parse(responseText)
-        pack = parsed.pack
-      } catch {
-        throw new Error('Failed to parse the generated assets. Please try again.')
-      }
-
-      set({ generationState: { status: 'done', pack } })
-
-      // Finalizing is done above inside the generateResponse block
     } catch (error: unknown) {
+      if ((error as Error).name === 'AbortError') return
+
       const message = error instanceof Error ? error.message : 'Something went wrong during generation'
       set({
         generationState: {
@@ -258,13 +279,19 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
     }
   },
 
-  reset: () => set({ generationState: { status: 'idle' }, pipelineStatus: 'idle' }),
-  resetState: () => set((state) => ({
-    isProcessed: false,
-    analysis: null,
-    extractedImageUrl: null,
-    config: { ...state.config, productHint: '' },
-    pipelineStatus: 'idle',
-    generationState: { status: 'idle' }
-  })),
+  reset: () => {
+    globalAbortController?.abort()
+    set({ generationState: { status: 'idle' }, pipelineStatus: 'idle' })
+  },
+  resetState: () => {
+    globalAbortController?.abort()
+    set((state) => ({
+      isProcessed: false,
+      analysis: null,
+      extractedImageUrl: null,
+      config: { ...state.config, productHint: '' },
+      pipelineStatus: 'idle',
+      generationState: { status: 'idle' }
+    }))
+  },
 }))

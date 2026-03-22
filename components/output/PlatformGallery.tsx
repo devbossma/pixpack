@@ -21,6 +21,7 @@ export const PLATFORM_ORDER: Platform[] = [
 
 export function PlatformGallery({ pack, isGenerating }: PlatformGalleryProps) {
   const config = useGenerationStore(s => s.config)
+  const generationState = useGenerationStore(s => s.generationState)
 
   const getSlotState = (platformId: Platform) => {
     // If pack exists, look for it
@@ -32,6 +33,10 @@ export function PlatformGallery({ pack, isGenerating }: PlatformGalleryProps) {
     
     // If generating, check if it's in config
     if (isGenerating && config.platforms.includes(platformId)) {
+      if (generationState.status === 'generating') {
+        const img = generationState.images.find(i => i.platform === platformId)
+        if (img) return { type: img.status as 'done' | 'error', image: img }
+      }
       return { type: 'generating' as const }
     }
 

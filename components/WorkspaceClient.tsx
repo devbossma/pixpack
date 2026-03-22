@@ -25,8 +25,14 @@ export function WorkspaceClient() {
 
       {isGenerating && generationState.status === 'generating' && (
         <LoadingSequence
-          currentStep={generationState.step}
-          progress={generationState.progress}
+          stage={generationState.stage}
+          stageMessage={generationState.stageMessage}
+        />
+      )}
+      {isGenerating && generationState.status === 'analyzing' && (
+        <LoadingSequence
+          stage={1}
+          stageMessage="Analyzing product..."
         />
       )}
     </div>
