@@ -76,8 +76,7 @@ export async function enqueueJob(input: GenerateInput): Promise<EnqueueResult> {
     const jobId = crypto.randomUUID()
 
     // Push jobId to the tail of the pending list
-    // await redis.lpush(QUEUE_LIST, jobId)
-    await redis.set(QUEUE_LIST, jobId);
+    await redis.lpush(QUEUE_LIST, jobId)
 
     // Get current queue length to calculate position
     const queueLength = await redis.llen(QUEUE_LIST)
