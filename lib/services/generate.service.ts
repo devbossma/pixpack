@@ -36,7 +36,7 @@ import type {
 
 const PRE_IMAGE_GAP_MS: Record<number, number> = {
   0: 0,      // image 1: fire immediately — assumes fresh quota
-  1: 15_000, // image 2: always wait 15s to avoid hitting RPM limit
+  1: 0, // image 2: always wait 15s to avoid hitting RPM limit
   2: 15_000, // image 3: wait 15s
   3: 15_000, // image 4: wait 15s
 }
@@ -236,13 +236,13 @@ async function generateAdCopy(
       // Merge copy into scenes — robust matching for variation and keys
       return variations.map(scene => {
         // Match by variation ID or falling back to angle (allow string/number mismatch)
-        const copy = copyData.find(r => 
-          String(r.variation) === String(scene.variation) || 
+        const copy = copyData.find(r =>
+          String(r.variation) === String(scene.variation) ||
           String(r.angle).toLowerCase() === String(scene.angle).toLowerCase()
         )
-        
+
         const emptyAdCopy: AdCopies = { awareness: '', consideration: '', conversion: '' }
-        
+
         if (!copy) {
           console.warn(`[stage2] No ad copy found for variation ${scene.variation}. Using fallback.`)
           return { ...scene, ad_copies: emptyAdCopy }
@@ -255,9 +255,9 @@ async function generateAdCopy(
         }
 
         const ad_copies: AdCopies = {
-          awareness:     getVal(['awareness', 'awareness_copy']),
+          awareness: getVal(['awareness', 'awareness_copy']),
           consideration: getVal(['consideration', 'consideration_copy']),
-          conversion:    getVal(['conversion', 'cta', 'conversion_copy']),
+          conversion: getVal(['conversion', 'cta', 'conversion_copy']),
         }
 
         return { ...scene, ad_copies }
