@@ -38,6 +38,19 @@ import type { GenerateInput } from './services/generate.service'
 // })
 const redis = Redis.fromEnv();
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function safeParse<T>(val: unknown): T {
+    if (typeof val === 'string') {
+        try {
+            return JSON.parse(val)
+        } catch (e) {
+            return val as any
+        }
+    }
+    return val as T
+}
+
 // ─── Keys ──────────────────────────────────────────────────────────────────────
 
 const QUEUE_LIST = 'queue:pending'
@@ -111,12 +124,12 @@ export async function getJob(jobId: string): Promise<QueueJob | null> {
         createdAt: raw.createdAt as string,
         startedAt: raw.startedAt as string | undefined,
         finishedAt: raw.finishedAt as string | undefined,
-        input: JSON.parse(raw.input as string),
-        pack: raw.pack ? JSON.parse(raw.pack as string) : undefined,
+        input: safeParse(raw.input),
+        pack: raw.pack ? safeParse(raw.pack) : undefined,
         error: raw.error as string | undefined,
         stage: raw.stage ? Number(raw.stage) : undefined,
         stageMessage: raw.stageMessage as string | undefined,
-        images: raw.images ? JSON.parse(raw.images as string) : [],
+        images: raw.images ? safeParse<GeneratedImage[]>(raw.images) : [],
     }
 }
 
@@ -132,7 +145,7 @@ export async function dequeueNextJob(): Promise<string | null> {
 
 export async function updateJob(
     jobId: string,
-    fields: Partial<Record<string, string>>,
+    fields: Partial<Record<string, unknown>>,
 ): Promise<void> {
     const key = jobKey(jobId)
     await redis.hset(key, fields)
@@ -143,8 +156,8 @@ export async function updateJob(
 // Called by the worker as each image completes — clients poll and see new images
 
 export async function appendJobImage(jobId: string, image: GeneratedImage): Promise<void> {
-    const raw = await redis.hget<string>(jobKey(jobId), 'images')
-    const images: GeneratedImage[] = raw ? JSON.parse(raw) : []
+    const raw = await redis.hget<unknown>(jobKey(jobId), 'images')
+    const images: GeneratedImage[] = raw ? safeParse<GeneratedImage[]>(raw) : []
     images.push(image)
     await updateJob(jobId, { images: JSON.stringify(images) })
 }
