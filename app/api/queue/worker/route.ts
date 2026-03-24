@@ -121,6 +121,8 @@ export async function POST(request: NextRequest) {
             console.log(`[worker] Job ${jobId} yielded to refresh execution timeout`)
             await updateJob(jobId, {
                 scenesWithCopy: result.scenesWithCopy,
+                stage: result.stage ? String(result.stage) : undefined,
+                stageMessage: result.stageMessage,
             })
             await requeueJobAtFront(jobId)
         } else {

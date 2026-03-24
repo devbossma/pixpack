@@ -29,6 +29,7 @@ import type {
   GeneratedImage, GeneratedPack,
   UserConfig, ProductProfile,
 } from '../types'
+import { isRateLimitError } from '../concurrency'
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
 
@@ -72,7 +73,10 @@ export async function generatePack(
   input: GenerateInput,
   callbacks: GenerateCallbacks = {},
   resumeState?: { scenesWithCopy: any[]; startImageIndex: number } | null
-): Promise<{ status: 'done'; pack: GeneratedPack } | { status: 'yield'; scenesWithCopy: any[] }> {
+): Promise<
+  | { status: 'done'; pack: GeneratedPack } 
+  | { status: 'yield'; scenesWithCopy: any[]; stage?: number; stageMessage?: string }
+> {
   const { productProfile, userConfig, marketingLanguage } = input
   const { onStage, onImage } = callbacks
   const ai = createVertexClient()
@@ -158,8 +162,8 @@ export async function generatePack(
       const result = await retryOnRateLimit(
         () => generateSingleImage(ai, scene, platform, productBase64, productMimeType, userConfig),
         {
-          maxAttempts: 2, // Reduced from 3
-          backoffMs: 15_000, // Reduced from 30s
+          maxAttempts: 3,
+          backoffMs: 15_000,
           label: `variation-${scene.variation}(${scene.angle})`
         },
       )
@@ -168,8 +172,19 @@ export async function generatePack(
       console.log(`[stage3] Variation ${scene.variation} (${scene.angle}) OK`)
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : 'Image generation failed'
-      const is429 = /429|quota|RESOURCE_EXHAUSTED/i.test(reason)
-      console.warn(`[stage3] Variation ${scene.variation} failed${is429 ? ' (quota)' : ''}:`, reason)
+      
+      if (isRateLimitError(reason)) {
+        // QUOTA ERROR: Yield to get a fresh window in the next worker
+        console.warn(`[stage3] Variation ${scene.variation} hit quota limit. Yielding job...`)
+        return { 
+          status: 'yield' as const, 
+          scenesWithCopy,
+          stage: 3,
+          stageMessage: `Waiting for quota window (resuming at image ${index+1})...`
+        }
+      }
+
+      console.warn(`[stage3] Variation ${scene.variation} failed (Fatal):`, reason)
       const errRes = buildErrorCard(scene, platform, reason)
       image = errRes.image
       base64 = errRes.base64

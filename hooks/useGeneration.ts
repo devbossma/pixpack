@@ -195,7 +195,7 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
       if (USE_SSE) {
         let retries = 0
         while (!newController.signal.aborted && retries < 15) {
-          await connectSSE(jobId, newController.signal, set)
+          await connectSSE(jobId, newController.signal, set, get)
           const currentState = get().generationState
           if (currentState.status === 'done' || currentState.status === 'error') {
             break
@@ -225,7 +225,7 @@ export const selectIsGenerating = (s: GenerationStore) =>
 
 // ── Shared Helpers ──────────────────────────────────────────────────────────
 
-async function connectSSE(jobId: string, signal: AbortSignal, set: any) {
+async function connectSSE(jobId: string, signal: AbortSignal, set: any, get: any) {
   const url = `/api/queue/stream?jobId=${jobId}`
 
   try {
@@ -236,9 +236,12 @@ async function connectSSE(jobId: string, signal: AbortSignal, set: any) {
     const decoder = new TextDecoder()
     let buffer = ''
 
-    let currentImages: GeneratedImage[] = []
-    let currentStage = 0
-    let currentMessage = ''
+    const currentState = get().generationState
+    let currentImages: GeneratedImage[] = (currentState.status === 'generating' || currentState.status === 'done') 
+      ? (currentState.images || (currentState.status === 'done' ? currentState.pack?.images : []) || []) 
+      : []
+    let currentStage = (currentState as any).stage || 0
+    let currentMessage = (currentState as any).stageMessage || ''
 
     while (true) {
       const { done, value } = await reader.read()
@@ -350,7 +353,10 @@ function handleEvent(
       break
     }
     case 'image': {
-      const imgs = [...currentImages, event.image]
+      // Deduplicate by ID to handle SSE re-emits during reconnect
+      const exists = currentImages.some(img => img.id === event.image.id)
+      const imgs = exists ? currentImages : [...currentImages, event.image]
+      
       update(imgs, currentStage, currentMessage)
       set({ generationState: { status: 'generating', jobId, stage: currentStage, stageMessage: currentMessage, images: imgs } })
       break
