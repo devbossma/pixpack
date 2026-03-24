@@ -54,8 +54,8 @@ export function OutputCard({ image, index, onDownload }: OutputCardProps) {
     const src = getImageSrc(image)
     if (!src) return
 
-    if (src.startsWith('http')) {
-      // For URL images (queue path), just open in new tab or use download attribute
+    if (src.startsWith('http') || src.startsWith('/api/image')) {
+      // For URL images (queue path or local API), just open in new tab or use download attribute
       const a = document.createElement('a')
       a.href = src
       a.download = `pixpack-variation-${varLetter}-${image.angle}.png`

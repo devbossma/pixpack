@@ -16,12 +16,17 @@ export async function GET(request: NextRequest) {
     if (!imageBase64) {
         return new NextResponse('Image not found or expired', { status: 404 })
     }
+    // Upstash stringifies strings sometimes, so we must clean quotes
+    let cleanBase64 = imageBase64
+    if (cleanBase64.startsWith('"') && cleanBase64.endsWith('"')) {
+        cleanBase64 = cleanBase64.slice(1, -1)
+    }
 
-    const base64Data = imageBase64.includes(',')
-        ? imageBase64.split(',')[1]
-        : imageBase64
+    const base64Data = cleanBase64.includes(',')
+        ? cleanBase64.split(',')[1]
+        : cleanBase64
 
-    const mimeType = imageBase64.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png'
+    const mimeType = cleanBase64.startsWith('data:image/jpeg') ? 'image/jpeg' : 'image/png'
 
     const buffer = Buffer.from(base64Data, 'base64')
 
