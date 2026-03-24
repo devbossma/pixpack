@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
 
         await updateJob(jobId, {
             status: 'processing',
-            position: null, // Clear out the numeric position while processing
+            position: -1, // Use -1 to indicate 'not in queue' while processing
             startedAt: new Date().toISOString(),
         })
 

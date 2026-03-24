@@ -96,9 +96,22 @@ export async function generatePack(
     console.log('[generate] Stage 2: generating ad copy...')
     if (onStage) await onStage(2, 'Writing ad copy for each variation...')
 
-    scenesWithCopy = await generateAdCopy(
-      ai, creativeJson.variations, productProfile, userConfig, language
-    )
+    try {
+      scenesWithCopy = await generateAdCopy(
+        ai, creativeJson.variations, productProfile, userConfig, language
+      )
+    } catch (err) {
+      console.warn('[stage2] Ad copy failed. Using emergency fallbacks.', (err as Error).message)
+      // Provide emergency fallback copy to keep the images generating
+      scenesWithCopy = creativeJson.variations.map(v => ({
+        ...v,
+        ad_copies: {
+          awareness: 'Ready for your store. ✨',
+          consideration: 'Precision engineered for quality.',
+          conversion: 'Shop the collection now.'
+        }
+      }))
+    }
     console.log('[generate] Stage 2 done — copy ready')
   } else {
     console.log('[generate] Resuming from pre-existing scenes and copy...')
@@ -244,6 +257,20 @@ async function generateAdCopy(
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
+          responseSchema: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                variation: { type: 'NUMBER' },
+                angle: { type: 'STRING' },
+                awareness: { type: 'STRING' },
+                consideration: { type: 'STRING' },
+                conversion: { type: 'STRING' },
+              },
+              required: ['variation', 'angle', 'awareness', 'consideration', 'conversion'],
+            },
+          },
           temperature: 0.8,
           topP: 0.95,
           maxOutputTokens: 8192,
@@ -251,14 +278,34 @@ async function generateAdCopy(
       })
 
       const raw = response.text ?? ''
+      
+      // Flexible parsing: find first [ or {
       const firstBracket = raw.indexOf('[')
-      const lastBracket = raw.lastIndexOf(']')
+      const firstBrace = raw.indexOf('{')
+      
+      let copyData: any[] = []
 
-      if (firstBracket === -1 || lastBracket === -1) {
-        throw new Error('Ad copy returned no JSON array')
+      try {
+        if (firstBracket !== -1 && (firstBrace === -1 || firstBracket < firstBrace)) {
+          // It's likely an array
+          const lastBracket = raw.lastIndexOf(']')
+          copyData = JSON.parse(raw.slice(firstBracket, lastBracket + 1))
+        } else if (firstBrace !== -1) {
+          // It's an object, check if it has a variations/data array
+          const lastBrace = raw.lastIndexOf('}')
+          const parsed = JSON.parse(raw.slice(firstBrace, lastBrace + 1))
+          copyData = Array.isArray(parsed) ? parsed : (parsed.variations || parsed.data || parsed.copy || [])
+        } else {
+           throw new Error('No JSON structures found in ad copy response')
+        }
+      } catch (e) {
+        console.error('[stage2] JSON Parse failed:', e, 'Raw:', raw.slice(0, 200))
+        throw new Error('Ad copy returned malformed JSON')
       }
 
-      const copyData = JSON.parse(raw.slice(firstBracket, lastBracket + 1)) as any[]
+      if (!Array.isArray(copyData) || copyData.length === 0) {
+        throw new Error('Ad copy returned no valid array')
+      }
 
       // Merge copy into scenes — robust matching for variation and keys
       return variations.map(scene => {
