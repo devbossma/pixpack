@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
         await updateJob(jobId, {
             status: 'processing',
-            position: '0',
+            position: null, // Clear out the numeric position while processing
             startedAt: new Date().toISOString(),
         })
 
@@ -154,7 +154,10 @@ export async function POST(request: NextRequest) {
         const remaining = await getQueueLength()
         if (remaining > 0) {
             console.log(`[worker] ${remaining} jobs remaining — self-triggering`)
-            fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/queue/worker`, {
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+            const workerUrl = `${siteUrl}/api/queue/worker`
+            
+            fetch(workerUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

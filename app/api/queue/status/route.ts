@@ -23,7 +23,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { getJob } from '@/lib/queue'
+import { getJob, isLocked } from '@/lib/queue'
 
 export const maxDuration = 10
 
@@ -43,8 +43,24 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Job not found or expired' }, { status: 404 })
     }
 
+    // Self-healing: if job is queued but no worker is locked, kick one off
+    if (job.status === 'queued') {
+        const locked = await isLocked()
+        if (!locked) {
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+            const workerUrl = `${siteUrl}/api/queue/worker`
+            fetch(workerUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.QUEUE_SECRET}`,
+                },
+            }).catch(() => {}) // Ignore trigger errors
+        }
+    }
+
     const estimatedWaitSeconds = job.status === 'queued'
-        ? job.position * SECONDS_PER_JOB
+        ? (job.position + 1) * SECONDS_PER_JOB
         : 0
 
     return NextResponse.json({

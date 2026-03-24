@@ -54,8 +54,9 @@ export async function POST(request: NextRequest) {
         // We don't await this — the response goes back to the client immediately
         const locked = await isLocked()
         if (!locked) {
-            const workerUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/queue/worker`
-            // const workerUrl = `http://localhost:3000/api/queue/worker`
+            const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+            const workerUrl = `${siteUrl}/api/queue/worker`
+            
             fetch(workerUrl, {
                 method: 'POST',
                 headers: {
@@ -63,7 +64,6 @@ export async function POST(request: NextRequest) {
                     'Authorization': `Bearer ${process.env.QUEUE_SECRET}`,
                 },
             }).catch(err => {
-                // Non-fatal — worker will be triggered by next poll or next enqueue
                 console.warn('[enqueue] Worker trigger failed (non-fatal):', err.message)
             })
         }

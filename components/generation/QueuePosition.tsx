@@ -69,12 +69,12 @@ export function QueuePosition({ position, estimatedWait }: QueuePositionProps) {
                     className="text-xl font-display font-bold mb-1"
                     style={{ color: 'var(--text)' }}
                 >
-                    {position === 1 ? "You're next!" : `You are #${position} in queue`}
+                    {position === 0 ? "You're next!" : `You are #${position} in queue`}
                 </p>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    {position === 1
+                    {position === 0
                         ? 'Generation will start in seconds...'
-                        : `${position - 1} ${position - 1 === 1 ? 'person' : 'people'} ahead of you`}
+                        : `${position} ${position === 1 ? 'person' : 'people'} ahead of you`}
                 </p>
             </div>
 

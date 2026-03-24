@@ -84,7 +84,7 @@ export async function enqueueJob(input: GenerateInput): Promise<EnqueueResult> {
     const job: Record<string, string> = {
         jobId,
         status: 'queued',
-        position: String(queueLength),
+        position: String(queueLength - 1),
         createdAt: new Date().toISOString(),
         input: JSON.stringify(input),
         images: '[]',
@@ -208,7 +208,7 @@ export async function recalculatePositions(): Promise<void> {
     const reversed = [...pending].reverse()
     await Promise.all(
         reversed.map((jobId, i) =>
-            updateJob(jobId, { position: String(i + 1) }),
+            updateJob(jobId, { position: String(i) }),
         ),
     )
 }
