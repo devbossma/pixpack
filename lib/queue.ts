@@ -40,10 +40,26 @@ export const redis = new Redis({
 // ─── Keys ──────────────────────────────────────────────────────────────────────
 
 const QUEUE_LIST = 'queue:pending'
+const ACTIVE_SET = 'queue:active'   // Set of jobIds currently being processed
 const LOCK_KEY = 'queue:lock'
 const jobKey = (id: string) => `queue:job:${id}`
 
 const JOB_TTL_SECONDS = 60 * 60 * 2   // 2 hours — then Redis auto-expires
+
+// ─── Resilience Wrapper ────────────────────────────────────────────────────────
+
+const redisCall = async <T>(fn: () => Promise<T>, retries = 2): Promise<T> => {
+    try {
+        return await fn()
+    } catch (err) {
+        if (retries > 0) {
+            console.warn(`[redis] Transient error - retrying... (${retries} left)`, (err as Error).message)
+            await new Promise(r => setTimeout(r, 500))
+            return redisCall(fn, retries - 1)
+        }
+        throw err
+    }
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -56,6 +72,7 @@ export interface QueueJob {
     stage?: number          // pipeline stage (1|2|3)
     stageMessage?: string   // current step description
     createdAt: string
+    updatedAt: string       // set on every hash update
     startedAt?: string
     finishedAt?: string
     input: GenerateInput
@@ -76,16 +93,17 @@ export async function enqueueJob(input: GenerateInput): Promise<EnqueueResult> {
     const jobId = crypto.randomUUID()
 
     // Push jobId to the tail of the pending list
-    await redis.lpush(QUEUE_LIST, jobId)
+    await redisCall(() => redis.lpush(QUEUE_LIST, jobId))
 
     // Get current queue length to calculate position
-    const queueLength = await redis.llen(QUEUE_LIST)
+    const queueLength = await redisCall(() => redis.llen(QUEUE_LIST))
 
     const job: Record<string, string> = {
         jobId,
         status: 'queued',
         position: String(queueLength - 1),
         createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         input: JSON.stringify(input),
         images: '[]',
     }
@@ -101,7 +119,7 @@ export async function enqueueJob(input: GenerateInput): Promise<EnqueueResult> {
 // ─── Get job status ────────────────────────────────────────────────────────────
 
 export async function getJob(jobId: string): Promise<QueueJob | null> {
-    const raw = await redis.hgetall(jobKey(jobId))
+    const raw = await redisCall(() => redis.hgetall(jobKey(jobId)))
     if (!raw || Object.keys(raw).length === 0) return null
 
     const parseField = (val: any) => {
@@ -118,6 +136,7 @@ export async function getJob(jobId: string): Promise<QueueJob | null> {
         stage: raw.stage ? Number(raw.stage) : undefined,
         stageMessage: raw.stageMessage as string | undefined,
         createdAt: raw.createdAt as string,
+        updatedAt: (raw.updatedAt || raw.createdAt) as string,
         startedAt: raw.startedAt as string | undefined,
         finishedAt: raw.finishedAt as string | undefined,
         input: parseField(raw.input),
@@ -132,8 +151,19 @@ export async function getJob(jobId: string): Promise<QueueJob | null> {
 
 export async function dequeueNextJob(): Promise<string | null> {
     // RPOP gives us FIFO (we LPUSH on enqueue, RPOP on dequeue)
-    const jobId = await redis.rpop<string>(QUEUE_LIST)
+    const jobId = await redisCall(() => redis.rpop<string>(QUEUE_LIST))
+    if (jobId) {
+        await redisCall(() => redis.sadd(ACTIVE_SET, jobId))
+    }
     return jobId ?? null
+}
+
+export async function markJobActive(jobId: string): Promise<void> {
+    await redis.sadd(ACTIVE_SET, jobId)
+}
+
+export async function markJobFinished(jobId: string): Promise<void> {
+    await redis.srem(ACTIVE_SET, jobId)
 }
 
 export async function requeueJobAtFront(jobId: string): Promise<void> {
@@ -150,7 +180,9 @@ export async function updateJob(
     const key = jobKey(jobId)
     
     // Hash fields must be strings in Redis
-    const flatFields: Record<string, string> = {}
+    const flatFields: Record<string, string> = {
+        updatedAt: new Date().toISOString(),
+    }
     for (const [k, v] of Object.entries(fields)) {
         if (v === undefined || v === null) continue
         flatFields[k] = typeof v === 'object' ? JSON.stringify(v) : String(v)
@@ -203,14 +235,43 @@ export async function getJobImageBase64(jobId: string, imageId: string): Promise
 
 export async function recalculatePositions(): Promise<void> {
     const pending = await redis.lrange<string>(QUEUE_LIST, 0, -1)
-    // pending is ordered tail→head (RPOP takes from tail = oldest = index -1)
-    // lrange returns head→tail, so index 0 is the newest, last index is next to run
     const reversed = [...pending].reverse()
     await Promise.all(
         reversed.map((jobId, i) =>
             updateJob(jobId, { position: String(i) }),
         ),
     )
+}
+
+// ─── Stuck Job Recovery ────────────────────────────────────────────────────────
+// Finds jobs in 'active' set that haven't been updated in > 5m
+// and puts them back into the pending queue.
+
+export async function recoverStuckJobs(): Promise<void> {
+    const activeIds = await redis.smembers(ACTIVE_SET)
+    const now = Date.now()
+    const fiveMinutes = 5 * 60 * 1000
+
+    for (const jobId of activeIds) {
+        const job = await getJob(jobId)
+        if (!job) {
+            await redis.srem(ACTIVE_SET, jobId)
+            continue
+        }
+
+        if (job.status === 'done' || job.status === 'failed') {
+            await redis.srem(ACTIVE_SET, jobId)
+            continue
+        }
+
+        const updatedAt = new Date(job.updatedAt).getTime()
+        if (now - updatedAt > fiveMinutes) {
+            console.log(`[queue] Recovering stuck job ${jobId}`)
+            await updateJob(jobId, { status: 'queued' })
+            await redis.lpush(QUEUE_LIST, jobId)
+            await redis.srem(ACTIVE_SET, jobId)
+        }
+    }
 }
 
 // ─── Worker lock ───────────────────────────────────────────────────────────────

@@ -35,6 +35,8 @@ import {
     requeueJobAtFront,
     recalculatePositions,
     getQueueLength,
+    recoverStuckJobs,
+    markJobFinished,
 } from '@/lib/queue'
 import { generatePack } from '@/lib/services/generate.service'
 import type { GeneratedImage } from '@/lib/types'
@@ -65,6 +67,9 @@ export async function POST(request: NextRequest) {
     let jobId: string | null = null
 
     try {
+        // STATEFUL: recover any jobs that crashed last time
+        await recoverStuckJobs()
+
         // Pop next job
         jobId = await dequeueNextJob()
         if (!jobId) {
@@ -133,6 +138,7 @@ export async function POST(request: NextRequest) {
                 finishedAt: new Date().toISOString(),
                 pack: finalPack,
             })
+            await markJobFinished(jobId)
         }
 
     } catch (err: unknown) {
@@ -145,6 +151,7 @@ export async function POST(request: NextRequest) {
                 finishedAt: new Date().toISOString(),
                 error: message,
             })
+            await markJobFinished(jobId)
         }
 
     } finally {
