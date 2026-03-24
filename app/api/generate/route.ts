@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       try {
         // generatePack now accepts an onImage callback — called after each
         // image completes so we can stream it immediately
-        const pack = await generatePack(
+        const result = await generatePack(
           { productProfile, userConfig, marketingLanguage },
           {
             onStage: async (stage: number, message: string) => {
@@ -74,6 +74,13 @@ export async function POST(request: NextRequest) {
           },
         )
 
+        if (result.status === 'yield') {
+           send({ type: 'error', message: 'Generation took too long for direct execution. Use the queue instead.' })
+           controller.close()
+           return
+        }
+
+        const pack = result.pack
         const hasImages = pack.images.some((img) => img.status === 'done')
         if (!hasImages) {
           send({ type: 'error', message: 'All image generation tasks failed. Please try again.' })

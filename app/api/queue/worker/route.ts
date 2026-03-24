@@ -32,6 +32,7 @@ import {
     getJob,
     updateJob,
     appendJobImage,
+    requeueJobAtFront,
     recalculatePositions,
     getQueueLength,
 } from '@/lib/queue'
@@ -89,8 +90,8 @@ export async function POST(request: NextRequest) {
             startedAt: new Date().toISOString(),
         })
 
-        // Run generation — upload each image to Supabase as it completes
-        const pack = await generatePack(
+        // Run generation — optionally passing resumeState to skip completed steps
+        const result = await generatePack(
             job.input,
             {
                 onStage: async (stage: number, message: string) => {
@@ -108,15 +109,31 @@ export async function POST(request: NextRequest) {
                     await appendJobImage(jobId!, image, base64)
                 },
             },
+            job.scenesWithCopy ? { scenesWithCopy: job.scenesWithCopy, startImageIndex: job.images?.length ?? 0 } : null
         )
 
-        await updateJob(jobId, {
-            status: 'done',
-            finishedAt: new Date().toISOString(),
-            pack: JSON.stringify(pack),
-        })
+        if (result.status === 'yield') {
+            console.log(`[worker] Job ${jobId} yielded to refresh execution timeout`)
+            await updateJob(jobId, {
+                scenesWithCopy: result.scenesWithCopy,
+            })
+            await requeueJobAtFront(jobId)
+        } else {
+            console.log(`[worker] Job ${jobId} done — final merger`)
+            
+            // Get the final job with ALL images collected across yields
+            const finalJob = await getJob(jobId)
+            const finalPack = {
+              ...result.pack,
+              images: finalJob?.images ?? result.pack.images
+            }
 
-        console.log(`[worker] Job ${jobId} done — complete pack saved`)
+            await updateJob(jobId, {
+                status: 'done',
+                finishedAt: new Date().toISOString(),
+                pack: finalPack,
+            })
+        }
 
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Generation failed'

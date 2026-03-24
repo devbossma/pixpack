@@ -71,7 +71,8 @@ export interface GenerateInput {
 export async function generatePack(
   input: GenerateInput,
   callbacks: GenerateCallbacks = {},
-): Promise<GeneratedPack> {
+  resumeState?: { scenesWithCopy: any[]; startImageIndex: number } | null
+): Promise<{ status: 'done'; pack: GeneratedPack } | { status: 'yield'; scenesWithCopy: any[] }> {
   const { productProfile, userConfig, marketingLanguage } = input
   const { onStage, onImage } = callbacks
   const ai = createVertexClient()
@@ -81,26 +82,32 @@ export async function generatePack(
     ? 'the primary language of the target market'
     : marketingLanguage
 
-  // ── Stage 1: Creative Director → 4 scene variations ──────────────────────
-  console.log(`[generate] Stage 1: Creative Director for ${platform}...`)
-  onStage?.(1, 'Building 4 creative concepts...')
+  let scenesWithCopy = resumeState?.scenesWithCopy
 
-  const creativeJson = await runCreativeDirector(ai, productProfile, userConfig, language)
-  console.log(`[generate] Stage 1 done — ${creativeJson.variations.length} variations`)
+  if (!scenesWithCopy) {
+    // ── Stage 1: Creative Director → 4 scene variations ──────────────────────
+    console.log(`[generate] Stage 1: Creative Director for ${platform}...`)
+    onStage?.(1, 'Building 4 creative concepts...')
+
+    const creativeJson = await runCreativeDirector(ai, productProfile, userConfig, language)
+    console.log(`[generate] Stage 1 done — ${creativeJson.variations.length} variations`)
+
+    // ── Stage 2: Ad copy for all 4 variations ─────────────────────────────────
+    console.log('[generate] Stage 2: generating ad copy...')
+    if (onStage) await onStage(2, 'Writing ad copy for each variation...')
+
+    scenesWithCopy = await generateAdCopy(
+      ai, creativeJson.variations, productProfile, userConfig, language
+    )
+    console.log('[generate] Stage 2 done — copy ready')
+  } else {
+    console.log('[generate] Resuming from pre-existing scenes and copy...')
+  }
 
   // ── Fetch product image ───────────────────────────────────────────────────
   console.log('[generate] Fetching product image...')
   const { productBase64, productMimeType } = await fetchProductImage(productProfile.extractedImageUrl)
   console.log(`[generate] Image ready — ${productMimeType}, ~${Math.round(productBase64.length / 1024)}KB`)
-
-  // ── Stage 2: Ad copy for all 4 variations ─────────────────────────────────
-  console.log('[generate] Stage 2: generating ad copy...')
-  if (onStage) await onStage(2, 'Writing ad copy for each variation...')
-
-  const scenesWithCopy = await generateAdCopy(
-    ai, creativeJson.variations, productProfile, userConfig, language
-  )
-  console.log('[generate] Stage 2 done — copy ready')
 
   // ── Stage 3: Generate 4 images sequentially, stream each one ─────────────
   console.log(`[generate] Stage 3: generating ${scenesWithCopy.length} images...`)
@@ -111,18 +118,16 @@ export async function generatePack(
   const startTime = Date.now()
   const VERCEL_SAFE_LIMIT_MS = 165_000 // Stop at 165s to safely write results before 180s hard kill
 
-  for (let index = 0; index < scenesWithCopy.length; index++) {
+  const startIndex = resumeState?.startImageIndex ?? 0
+  for (let index = startIndex; index < scenesWithCopy.length; index++) {
     const scene = scenesWithCopy[index]
     const label = `image ${index + 1}/${scenesWithCopy.length} (${scene.angle})`
 
-    // Bail out cleanly if Vercel is about to kill the lambda
+    // Yield cleanly if Vercel is about to kill the lambda
     const timeRemaining = VERCEL_SAFE_LIMIT_MS - (Date.now() - startTime)
     if (timeRemaining < 15_000) {
-      console.warn(`[stage3] Vercel timeout approaching (${Math.round((Date.now() - startTime) / 1000)}s elapsed). Skipping ${label} to save pack safely.`)
-      const errRes = buildErrorCard(scene, platform, 'Variation skipped due to cloud execution time limits.')
-      images.push(errRes.image)
-      if (onImage) await onImage(errRes.image, errRes.base64)
-      continue
+      console.warn(`[stage3] Vercel timeout approaching (${Math.round((Date.now() - startTime) / 1000)}s elapsed). Yielding to spawn a new lambda.`)
+      return { status: 'yield', scenesWithCopy }
     }
 
     const preGapMs = (index > 0) ? 15_000 : 0 // Wait 15s between images (reduced from 20s)
@@ -166,11 +171,14 @@ export async function generatePack(
   console.log(`[generate] Done — ${successCount}/${images.length} images OK`)
 
   return {
-    id: crypto.randomUUID(),
-    platform,
-    images,
-    audience: userConfig,
-    generatedAt: new Date().toISOString(),
+    status: 'done',
+    pack: {
+      id: crypto.randomUUID(),
+      platform,
+      images, // Warning: images here only have the subset appended in THIS session, caller must merge!
+      audience: userConfig,
+      generatedAt: new Date().toISOString(),
+    }
   }
 }
 

@@ -62,6 +62,7 @@ export interface QueueJob {
     pack?: GeneratedPack  // stored WITHOUT imageBase64 — images have imageUrl instead
     error?: string
     images: GeneratedImage[]  // images collected so far — URL not base64
+    scenesWithCopy?: any[]    // intermediate processed scenes/copy
 }
 
 export interface EnqueueResult {
@@ -123,6 +124,7 @@ export async function getJob(jobId: string): Promise<QueueJob | null> {
         pack: parseField(raw.pack),
         error: raw.error as string | undefined,
         images: parseField(raw.images) ?? [],
+        scenesWithCopy: parseField(raw.scenesWithCopy),
     }
 }
 
@@ -134,6 +136,11 @@ export async function dequeueNextJob(): Promise<string | null> {
     return jobId ?? null
 }
 
+export async function requeueJobAtFront(jobId: string): Promise<void> {
+    // RPUSH puts it at the front of the queue for the very next RPOP
+    await redis.rpush(QUEUE_LIST, jobId)
+}
+
 // ─── Update job fields ─────────────────────────────────────────────────────────
 
 export async function updateJob(
@@ -141,7 +148,17 @@ export async function updateJob(
     fields: Partial<Record<string, any>>,
 ): Promise<void> {
     const key = jobKey(jobId)
-    await redis.hset(key, fields)
+    
+    // Hash fields must be strings in Redis
+    const flatFields: Record<string, string> = {}
+    for (const [k, v] of Object.entries(fields)) {
+        if (v === undefined || v === null) continue
+        flatFields[k] = typeof v === 'object' ? JSON.stringify(v) : String(v)
+    }
+
+    if (Object.keys(flatFields).length > 0) {
+        await redis.hset(key, flatFields)
+    }
     await redis.expire(key, JOB_TTL_SECONDS)  // refresh TTL on every update
 }
 
