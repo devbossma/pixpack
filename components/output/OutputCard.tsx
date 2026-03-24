@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import type { GeneratedImage, Platform } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
 import { cardEntrance } from '@/lib/animations'
+import { getImageSrc, hasImageSrc } from '@/lib/image-src'
 
 type CopyTab = 'awareness' | 'consideration' | 'conversion'
 
@@ -50,10 +51,21 @@ export function OutputCard({ image, index, onDownload }: OutputCardProps) {
   }
 
   function downloadImage(): void {
-    if (!image.imageBase64) return
-    const base64Data = image.imageBase64.includes(',')
-      ? image.imageBase64.split(',')[1]
-      : image.imageBase64
+    const src = getImageSrc(image)
+    if (!src) return
+
+    if (src.startsWith('http')) {
+      // For URL images (queue path), just open in new tab or use download attribute
+      const a = document.createElement('a')
+      a.href = src
+      a.download = `pixpack-variation-${varLetter}-${image.angle}.png`
+      a.target = '_blank'
+      a.click()
+      return
+    }
+
+    // For base64 images (SSE path)
+    const base64Data = src.includes(',') ? src.split(',')[1] : src
     const byteChars = atob(base64Data)
     const byteNums = new Uint8Array(byteChars.length)
     for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i)
@@ -97,7 +109,7 @@ export function OutputCard({ image, index, onDownload }: OutputCardProps) {
         </div>
 
         {/* Right: Download single image */}
-        {image.imageBase64 && (
+        {hasImageSrc(image) && (
           <button
             onClick={downloadImage}
             title="Download this image"
@@ -161,7 +173,7 @@ export function OutputCard({ image, index, onDownload }: OutputCardProps) {
                 style={{ aspectRatio: spec.aspectRatio ? ratioToCss(spec.aspectRatio) : '1/1' }}
               >
                 <div className="absolute inset-0 overflow-hidden border-b border-[var(--output-border)]">
-                  {image.status === 'error' && !image.imageBase64 ? (
+                  {image.status === 'error' && !hasImageSrc(image) ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--output-bg)] p-4">
                       <AlertTriangle size={24} className="text-[var(--accent2)]" />
                       <p className="text-xs text-[var(--output-muted)] text-center font-medium">
@@ -173,7 +185,7 @@ export function OutputCard({ image, index, onDownload }: OutputCardProps) {
                         </p>
                       )}
                     </div>
-                  ) : !image.imageBase64 ? (
+                  ) : !hasImageSrc(image) ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[var(--output-bg)]">
                       <div className="w-6 h-6 rounded-full border-2 border-[var(--output-border)] border-t-[var(--accent)] animate-spin" />
                       <span className="text-[10px] text-[var(--output-muted)]">Generating…</span>
@@ -184,7 +196,7 @@ export function OutputCard({ image, index, onDownload }: OutputCardProps) {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ duration: 0.5, ease: 'easeOut' }}
                       // eslint-disable-next-line @next/next/no-img-element
-                      src={image.imageBase64}
+                      src={getImageSrc(image)!}
                       alt={`Variation ${varLetter} — ${image.angle}`}
                       className="absolute inset-0 w-full h-full object-contain bg-[var(--output-bg)]"
                     />

@@ -22,6 +22,38 @@ import type { GeneratedImage } from '@/lib/types'
 
 export const maxDuration = 30
 
+import { getJobImageBase64 } from '@/lib/queue'
+
+async function getImageBuffer(image: GeneratedImage): Promise<Buffer | null> {
+  if (!image.imageUrl) return null
+
+  // It should be /api/image?jobId=XYZ&imageId=ABC
+  try {
+    const url = new URL(image.imageUrl, 'http://localhost')
+    const jobId = url.searchParams.get('jobId')
+    const imageId = url.searchParams.get('imageId')
+
+    if (jobId && imageId) {
+      const base64 = await getJobImageBase64(jobId, imageId)
+      if (base64) {
+         const cleanBase64 = base64.replace(/^data:image\/\w+;base64,/, '')
+         return Buffer.from(cleanBase64, 'base64')
+      }
+    }
+    
+    // Fallback if the URL is an absolute URL (e.g. from an old Supabase stored job)
+    if (image.imageUrl.startsWith('http')) {
+      const res = await fetch(image.imageUrl)
+      if (res.ok) {
+        return Buffer.from(await res.arrayBuffer())
+      }
+    }
+  } catch {
+    // ignore URL parsing errors
+  }
+  return null
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.nextUrl.searchParams.get('token')
@@ -82,11 +114,15 @@ export async function GET(request: NextRequest) {
     // Images — variation-A-lifestyle.png etc.
     const VARIATION_LETTERS = ['A', 'B', 'C', 'D']
     for (const image of images) {
-      if (image.status !== 'done' || !image.imageBase64) continue
-      const base64 = image.imageBase64.replace(/^data:image\/\w+;base64,/, '')
-      const ext = image.imageBase64.startsWith('data:image/jpeg') ? 'jpg' : 'png'
+      if (image.status !== 'done' || !image.imageUrl) continue
+      
+      const buffer = await getImageBuffer(image)
+      if (!buffer) continue
+
+      const ext = image.imageUrl.includes('jpeg') || image.imageUrl.includes('jpg') ? 'jpg' : 'png'
       const letter = VARIATION_LETTERS[image.variation - 1] ?? String(image.variation)
-      imagesFolder.file(`variation-${letter}-${image.angle}.${ext}`, base64, { base64: true })
+      
+      imagesFolder.file(`variation-${letter}-${image.angle}.${ext}`, buffer)
     }
 
     // Ad copy

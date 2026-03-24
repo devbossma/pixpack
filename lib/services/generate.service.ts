@@ -56,8 +56,8 @@ const ASPECT_RATIOS: Record<string, string> = {
 // ─── Streaming callbacks ──────────────────────────────────────────────────────
 
 export interface GenerateCallbacks {
-  onStage?: (stage: number, message: string) => void
-  onImage?: (image: GeneratedImage) => void
+  onStage?: (stage: number, message: string) => Promise<void>
+  onImage?: (image: GeneratedImage, base64: string | null) => Promise<void>
 }
 
 export interface GenerateInput {
@@ -95,7 +95,7 @@ export async function generatePack(
 
   // ── Stage 2: Ad copy for all 4 variations ─────────────────────────────────
   console.log('[generate] Stage 2: generating ad copy...')
-  onStage?.(2, 'Writing ad copy for each variation...')
+  if (onStage) await onStage(2, 'Writing ad copy for each variation...')
 
   const scenesWithCopy = await generateAdCopy(
     ai, creativeJson.variations, productProfile, userConfig, language
@@ -104,7 +104,7 @@ export async function generatePack(
 
   // ── Stage 3: Generate 4 images sequentially, stream each one ─────────────
   console.log(`[generate] Stage 3: generating ${scenesWithCopy.length} images...`)
-  onStage?.(3, `Generating ${scenesWithCopy.length} image variations...`)
+  if (onStage) await onStage(3, `Generating ${scenesWithCopy.length} image variations...`)
 
   const images: GeneratedImage[] = []
 
@@ -121,8 +121,9 @@ export async function generatePack(
     console.log(`[stage3] Starting ${label}`)
 
     let image: GeneratedImage
+    let base64: string | null = null
     try {
-      image = await retryOnRateLimit(
+      const result = await retryOnRateLimit(
         () => generateSingleImage(ai, scene, platform, productBase64, productMimeType, userConfig),
         {
           maxAttempts: 3,
@@ -130,17 +131,21 @@ export async function generatePack(
           label: `variation-${scene.variation}(${scene.angle})`
         },
       )
+      image = result.image
+      base64 = result.base64
       console.log(`[stage3] Variation ${scene.variation} (${scene.angle}) OK`)
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : 'Image generation failed'
       const is429 = /429|quota|RESOURCE_EXHAUSTED/i.test(reason)
       console.warn(`[stage3] Variation ${scene.variation} failed${is429 ? ' (quota)' : ''}:`, reason)
-      image = buildErrorCard(scene, platform, reason)
+      const errRes = buildErrorCard(scene, platform, reason)
+      image = errRes.image
+      base64 = errRes.base64
     }
 
     images.push(image)
-    // Stream this image to the client immediately
-    onImage?.(image)
+    // Stream this image to the client immediately and await the worker upload
+    if (onImage) await onImage(image, base64)
   }
 
   const successCount = images.filter(img => img.status === 'done').length
@@ -276,7 +281,7 @@ async function generateSingleImage(
   productBase64: string,
   productMimeType: string,
   userConfig?: UserConfig,
-): Promise<GeneratedImage> {
+): Promise<{ image: GeneratedImage; base64: string | null }> {
   const aspectRatio = ASPECT_RATIOS[platform] ?? '1:1'
   const imagePrompt = buildImageGenerationPrompt(scene, aspectRatio, userConfig)
 
@@ -312,13 +317,15 @@ async function generateSingleImage(
   const imageBase64 = `data:${mimeType ?? 'image/png'};base64,${data}`
 
   return {
-    id: `img_${scene.variation}_${Date.now()}`,
-    variation: scene.variation,
-    platform,
-    angle: scene.angle,
-    imageBase64,
-    adCopy: scene.ad_copies,
-    status: 'done',
+    image: {
+      id: `img_${scene.variation}_${Date.now()}`,
+      variation: scene.variation,
+      platform,
+      angle: scene.angle,
+      adCopy: scene.ad_copies,
+      status: 'done',
+    },
+    base64: imageBase64,
   }
 }
 
@@ -341,16 +348,18 @@ function buildErrorCard(
   scene: SceneLayout,
   platform: string,
   reason: string,
-): GeneratedImage {
+): { image: GeneratedImage; base64: null } {
   const emptyAdCopy: AdCopies = { awareness: '', consideration: '', conversion: '' }
   return {
-    id: `img_err_${scene.variation}_${Date.now()}`,
-    variation: scene.variation,
-    platform,
-    angle: scene.angle,
-    imageBase64: null,
-    adCopy: emptyAdCopy,
-    status: 'error',
-    error: reason,
+    image: {
+      id: `img_err_${scene.variation}_${Date.now()}`,
+      variation: scene.variation,
+      platform,
+      angle: scene.angle,
+      adCopy: emptyAdCopy,
+      status: 'error',
+      error: reason,
+    },
+    base64: null,
   }
 }

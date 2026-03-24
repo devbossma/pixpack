@@ -3,26 +3,28 @@
  *
  * POST /api/queue/worker
  *
- * The serial job processor. Runs ONE job at a time.
+ * Serial job processor. Runs ONE job at a time.
+ *
+ * KEY FIX — image base64 never stored in Redis:
+ *   Upstash has a 10MB request size limit.
+ *   4 images × ~3MB base64 each = ~12MB → exceeds limit.
+ *
+ *   Solution: as each image completes, upload its base64 to Supabase Storage.
+ *   Store the public URL in Redis instead. The client loads images from Supabase.
+ *   The final pack stored on 'done' also has URLs instead of base64.
  *
  * Flow:
- *   1. Acquire lock (Redis NX) — if locked, another worker is running, exit.
- *   2. Pop next jobId from queue list.
+ *   1. Acquire Redis lock (NX) — if locked, another worker is running, exit.
+ *   2. Pop next jobId from queue.
  *   3. Mark job as 'processing'.
- *   4. Run generatePack() — callbacks write images to Redis as they complete.
- *      → Clients polling /api/queue/status see images appear in real-time.
- *   5. Mark job as 'done' (or 'failed').
+ *   4. Run generatePack() — onImage callback uploads to Supabase → stores URL in Redis.
+ *   5. Mark job as 'done' with lean pack (URLs not base64).
  *   6. Release lock.
- *   7. If more jobs are waiting, self-trigger (fire-and-forget fetch to self).
- *
- * Self-triggering means no cron job is needed.
- * Each completed job kicks off the next one automatically.
- *
- * Security: requires Authorization: Bearer {QUEUE_SECRET} header.
- * This prevents random internet requests from triggering the worker.
+ *   7. Self-trigger if more jobs waiting.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import {
     acquireLock,
     releaseLock,
@@ -34,17 +36,25 @@ import {
     getQueueLength,
 } from '@/lib/queue'
 import { generatePack } from '@/lib/services/generate.service'
+import type { GeneratedImage } from '@/lib/types'
 
 export const maxDuration = 180
 
+// Function deleted because Supabase is no longer used for image temporary storage
+
+
+// function makeLeanPack deleted as we mutate the images directly now
+
+// ─── Worker handler ────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
-    // ── Auth check ────────────────────────────────────────────────────────────
+    // Auth
     const auth = request.headers.get('authorization')
     if (auth !== `Bearer ${process.env.QUEUE_SECRET}`) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // ── Acquire lock ──────────────────────────────────────────────────────────
+    // Acquire lock
     const locked = await acquireLock()
     if (!locked) {
         console.log('[worker] Already running — exiting')
@@ -54,7 +64,7 @@ export async function POST(request: NextRequest) {
     let jobId: string | null = null
 
     try {
-        // ── Pop next job ────────────────────────────────────────────────────────
+        // Pop next job
         jobId = await dequeueNextJob()
         if (!jobId) {
             console.log('[worker] Queue empty — nothing to do')
@@ -62,31 +72,24 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'queue_empty' })
         }
 
-        // Recalculate positions for remaining queued jobs
         await recalculatePositions()
 
-        // ── Load job ────────────────────────────────────────────────────────────
         const job = await getJob(jobId)
         if (!job) {
-            console.warn(`[worker] Job ${jobId} not found in Redis — skipping`)
+            console.warn(`[worker] Job ${jobId} not found — skipping`)
             await releaseLock()
             return NextResponse.json({ status: 'job_not_found' })
         }
 
         console.log(`[worker] Processing job ${jobId}`)
 
-        // ── Mark as processing ──────────────────────────────────────────────────
         await updateJob(jobId, {
             status: 'processing',
             position: '0',
             startedAt: new Date().toISOString(),
         })
 
-        // ── Run generation ──────────────────────────────────────────────────────
-        // Callbacks write progress into Redis so the status poller can relay it.
-        // When USE_SSE=false, the client polls /api/queue/status to get images.
-        // When USE_SSE=true, the client also opens an SSE connection to /api/queue/stream.
-
+        // Run generation — upload each image to Supabase as it completes
         const pack = await generatePack(
             job.input,
             {
@@ -94,21 +97,26 @@ export async function POST(request: NextRequest) {
                     await updateJob(jobId!, { stage: String(stage), stageMessage: message })
                     console.log(`[worker] ${jobId} stage ${stage}: ${message}`)
                 },
-                onImage: async (image) => {
-                    await appendJobImage(jobId!, image)
-                    console.log(`[worker] ${jobId} image ${image.variation} (${image.angle}) saved`)
+
+                onImage: async (image: GeneratedImage, base64: string | null) => {
+                    console.log(`[worker] ${jobId} variation ${image.variation} (${image.angle}) — processed`)
+
+                    if (base64) {
+                        image.imageUrl = `/api/image?jobId=${jobId}&imageId=${image.id}`
+                    }
+
+                    await appendJobImage(jobId!, image, base64)
                 },
             },
         )
 
-        // ── Mark as done ────────────────────────────────────────────────────────
         await updateJob(jobId, {
             status: 'done',
             finishedAt: new Date().toISOString(),
             pack: JSON.stringify(pack),
         })
 
-        console.log(`[worker] Job ${jobId} done`)
+        console.log(`[worker] Job ${jobId} done — complete pack saved`)
 
     } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Generation failed'
@@ -123,24 +131,19 @@ export async function POST(request: NextRequest) {
         }
 
     } finally {
-        // ── Release lock ────────────────────────────────────────────────────────
         await releaseLock()
 
-        // ── Self-trigger if more jobs are waiting ───────────────────────────────
-        // Fire-and-forget — we don't await this, response goes back first
+        // Self-trigger next job
         const remaining = await getQueueLength()
         if (remaining > 0) {
             console.log(`[worker] ${remaining} jobs remaining — self-triggering`)
-            const workerUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/api/queue/worker`
-            fetch(workerUrl, {
+            fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/queue/worker`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${process.env.QUEUE_SECRET}`,
                 },
-            }).catch(err => {
-                console.warn('[worker] Self-trigger failed:', err.message)
-            })
+            }).catch(err => console.warn('[worker] Self-trigger failed:', err.message))
         }
     }
 

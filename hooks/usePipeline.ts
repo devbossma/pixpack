@@ -64,9 +64,9 @@ export function usePipeline() {
     if (generationState.status === 'analyzing') {
       if (pipelineStatus !== 'extracting') setPipelineStatus('extracting')
     } else if (generationState.status === 'generating') {
-      if (generationState.stage === 1 || generationState.stage === 2) {
+      if ((generationState.stage ?? 0) === 1 || (generationState.stage ?? 0) === 2) {
         if (pipelineStatus !== 'generating_creative') setPipelineStatus('generating_creative')
-      } else if (generationState.stage >= 3) {
+      } else if ((generationState.stage ?? 0) >= 3) {
         if (pipelineStatus !== 'rendering_images') setPipelineStatus('rendering_images')
       }
     } else if (generationState.status === 'done') {

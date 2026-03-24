@@ -6,6 +6,7 @@ import { ActionBar } from './ActionBar'
 import { Wand2 } from 'lucide-react'
 import type { GeneratedPack, GeneratedImage } from '@/types'
 import { useGenerationStore, selectIsGenerating } from '@/hooks/useGeneration'
+import { LoadingSequence } from '@/components/generation/LoadingSequence'
 
 interface OutputSectionProps {
   pack: GeneratedPack | null
@@ -15,14 +16,24 @@ export function OutputSection({ pack }: OutputSectionProps) {
   const isGenerating = useGenerationStore(selectIsGenerating)
   const generationState = useGenerationStore(s => s.generationState)
 
+  if (isGenerating && (
+    generationState.status === 'queued' || 
+    generationState.status === 'analyzing' || 
+    generationState.status === 'generating'
+  )) {
+    return (
+      <div className="flex-1 flex flex-col justify-center items-center p-8 bg-[var(--output-bg)]">
+        <div className="max-w-md w-full">
+          <LoadingSequence state={generationState} />
+        </div>
+      </div>
+    )
+  }
+
   let displayImages: GeneratedImage[] = []
   let displayPlatform: string | undefined
 
-  if (isGenerating && generationState.status === 'generating') {
-    displayImages = generationState.images
-    // Derive platform from config
-    displayPlatform = undefined
-  } else if (pack) {
+  if (pack) {
     displayImages = pack.images
     displayPlatform = pack.platform
   }

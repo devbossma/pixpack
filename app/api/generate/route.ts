@@ -65,10 +65,10 @@ export async function POST(request: NextRequest) {
         const pack = await generatePack(
           { productProfile, userConfig, marketingLanguage },
           {
-            onStage: (stage: number, message: string) => {
+            onStage: async (stage: number, message: string) => {
               send({ type: 'stage', stage, message })
             },
-            onImage: (image: unknown) => {
+            onImage: async (image: any) => {
               send({ type: 'image', image })
             },
           },

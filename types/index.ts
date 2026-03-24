@@ -23,11 +23,14 @@ export type UploadState =
   | { status: 'ready'; previewUrl: string; base64: string; mimeType: string }
   | { status: 'error'; message: string }
 
+
+
 export type GenerationState =
   | { status: 'idle' }
-  | { status: 'analyzing' }
-  | { status: 'generating'; stage: number; stageMessage: string; images: GeneratedImage[] }
-  | { status: 'done'; pack: GeneratedPack }
+  | { status: 'queued'; jobId: string; position: number; estimatedWait: number }
+  | { status: 'analyzing'; jobId: string }
+  | { status: 'generating'; jobId: string; stage: number; stageMessage: string; images: GeneratedImage[] }
+  | { status: 'done'; jobId: string; pack: GeneratedPack }
   | { status: 'error'; message: string; retryable?: boolean }
 
 // Preserve PLATFORMS for UI rendering

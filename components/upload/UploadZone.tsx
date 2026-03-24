@@ -28,7 +28,7 @@ export function UploadZone() {
       }
       const previewUrl = URL.createObjectURL(file)
       const { base64, mimeType } = await fileToBase64(file)
-      setUploadState({ status: 'ready', previewUrl, base64, mimeType })
+      setUploadState({ status: 'ready', previewUrl, base64, mimeType, file })
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Error processing file'
       setUploadState({ status: 'error', message })

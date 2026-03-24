@@ -17,6 +17,7 @@ import {
 import { QueuePosition } from './QueuePosition'
 import type { GeneratedImage } from '@/lib/types'
 import type { GenerationState } from '@/hooks/useGeneration'
+import { getImageSrc } from '@/lib/image-src'
 
 const STEPS = [
     { id: 'analyzing', icon: ScanSearch, title: 'Analyzing product', subtitle: 'Reading materials, style & target audience' },
@@ -167,9 +168,9 @@ export function LoadingSequence({ state }: LoadingSequenceProps) {
                                             border: '1px solid var(--border)',
                                         }}
                                     >
-                                        {img?.imageBase64 && img.status === 'done' && (
+                                        {img && img.status === 'done' && getImageSrc(img) && (
                                             <img
-                                                src={img.imageBase64}
+                                                src={getImageSrc(img)!}
                                                 alt={`Variation ${i + 1}`}
                                                 className="w-full h-full object-cover"
                                             />

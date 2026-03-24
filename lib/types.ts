@@ -87,7 +87,7 @@ export interface GeneratedImage {
   variation: number        // 1-4
   platform: string
   angle: string
-  imageBase64: string | null
+  imageUrl?: string | null
   adCopy: AdCopies
   status: 'done' | 'error'
   error?: string

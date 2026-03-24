@@ -32,24 +32,10 @@ import type { GenerateInput } from './services/generate.service'
 
 // ─── Upstash Redis client ──────────────────────────────────────────────────────
 
-// export const redis = new Redis({
-//     url: process.env.UPSTASH_REDIS_REST_URL!,
-//     token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-// })
-const redis = Redis.fromEnv();
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function safeParse<T>(val: unknown): T {
-    if (typeof val === 'string') {
-        try {
-            return JSON.parse(val)
-        } catch (e) {
-            return val as any
-        }
-    }
-    return val as T
-}
+export const redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+})
 
 // ─── Keys ──────────────────────────────────────────────────────────────────────
 
@@ -67,15 +53,15 @@ export interface QueueJob {
     jobId: string
     status: JobStatus
     position: number        // queue position while status=queued, 0 otherwise
+    stage?: number          // pipeline stage (1|2|3)
+    stageMessage?: string   // current step description
     createdAt: string
     startedAt?: string
     finishedAt?: string
     input: GenerateInput
-    pack?: GeneratedPack
+    pack?: GeneratedPack  // stored WITHOUT imageBase64 — images have imageUrl instead
     error?: string
-    stage?: number          // current pipeline stage (1|2|3)
-    stageMessage?: string    // human-readable message for the stage
-    images: GeneratedImage[]  // images collected so far (for SSE replay)
+    images: GeneratedImage[]  // images collected so far — URL not base64
 }
 
 export interface EnqueueResult {
@@ -117,19 +103,26 @@ export async function getJob(jobId: string): Promise<QueueJob | null> {
     const raw = await redis.hgetall(jobKey(jobId))
     if (!raw || Object.keys(raw).length === 0) return null
 
+    const parseField = (val: any) => {
+        if (typeof val === 'string') {
+            try { return JSON.parse(val) } catch { return val }
+        }
+        return val
+    }
+
     return {
         jobId: raw.jobId as string,
         status: raw.status as JobStatus,
         position: Number(raw.position ?? 0),
+        stage: raw.stage ? Number(raw.stage) : undefined,
+        stageMessage: raw.stageMessage as string | undefined,
         createdAt: raw.createdAt as string,
         startedAt: raw.startedAt as string | undefined,
         finishedAt: raw.finishedAt as string | undefined,
-        input: safeParse(raw.input),
-        pack: raw.pack ? safeParse(raw.pack) : undefined,
+        input: parseField(raw.input),
+        pack: parseField(raw.pack),
         error: raw.error as string | undefined,
-        stage: raw.stage ? Number(raw.stage) : undefined,
-        stageMessage: raw.stageMessage as string | undefined,
-        images: raw.images ? safeParse<GeneratedImage[]>(raw.images) : [],
+        images: parseField(raw.images) ?? [],
     }
 }
 
@@ -145,22 +138,48 @@ export async function dequeueNextJob(): Promise<string | null> {
 
 export async function updateJob(
     jobId: string,
-    fields: Partial<Record<string, unknown>>,
+    fields: Partial<Record<string, any>>,
 ): Promise<void> {
     const key = jobKey(jobId)
     await redis.hset(key, fields)
     await redis.expire(key, JOB_TTL_SECONDS)  // refresh TTL on every update
 }
 
-// ─── Append an image to the job's image list ──────────────────────────────────
-// Called by the worker as each image completes — clients poll and see new images
+// Stores a LEAN version of the image in the job object.
+// Full base64 (~3MB per image) is stored in a separate standalone Redis key
+// to stay under the 10MB payload size limit per request.
 
-export async function appendJobImage(jobId: string, image: GeneratedImage): Promise<void> {
-    const raw = await redis.hget<unknown>(jobKey(jobId), 'images')
-    const images: GeneratedImage[] = raw ? safeParse<GeneratedImage[]>(raw) : []
-    images.push(image)
+export async function appendJobImage(jobId: string, image: GeneratedImage, base64: string | null): Promise<void> {
+    if (base64) {
+        const imgKey = `${jobKey(jobId)}:image:${image.id}`
+        await redis.set(imgKey, base64)
+        // Store for 24h so the download link works for a day
+        await redis.expire(imgKey, 24 * 60 * 60)
+    }
+
+    const leanImage: GeneratedImage = {
+        ...image,
+        imageUrl: base64 ? `/api/image?jobId=${jobId}&imageId=${image.id}` : null
+    }
+
+    const raw = await redis.hget<any>(jobKey(jobId), 'images')
+    let images: GeneratedImage[] = []
+    
+    if (typeof raw === 'string') {
+        images = JSON.parse(raw)
+    } else if (Array.isArray(raw)) {
+        images = raw
+    }
+    
+    images.push(leanImage)
     await updateJob(jobId, { images: JSON.stringify(images) })
 }
+
+export async function getJobImageBase64(jobId: string, imageId: string): Promise<string | null> {
+    const raw = await redis.get<string>(`${jobKey(jobId)}:image:${imageId}`)
+    return raw ?? null
+}
+
 
 // ─── Queue position recalculation ─────────────────────────────────────────────
 // Call after dequeue to update position numbers for remaining jobs
