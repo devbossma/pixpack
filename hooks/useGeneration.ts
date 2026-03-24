@@ -193,7 +193,18 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
 
       // 3. Track Progress
       if (USE_SSE) {
-        await connectSSE(jobId, newController.signal, set)
+        let retries = 0
+        while (!newController.signal.aborted && retries < 15) {
+          await connectSSE(jobId, newController.signal, set)
+          const currentState = get().generationState
+          if (currentState.status === 'done' || currentState.status === 'error') {
+            break
+          }
+          // The SSE closed cleanly (likely due to 170s Vercel timeout).
+          // We must reconnect until the job reaches a terminal state.
+          await new Promise(r => setTimeout(r, 1000))
+          retries++
+        }
       } else {
         await startPolling(jobId, newController.signal, set)
       }
@@ -251,7 +262,7 @@ async function connectSSE(jobId: string, signal: AbortSignal, set: any) {
     }
   } catch (err: any) {
     if (err.name !== 'AbortError') {
-      set({ generationState: { status: 'error', message: 'Connection lost' } })
+      console.warn('[connectSSE] Network disconnected, retrying...', err)
     }
   }
 }
