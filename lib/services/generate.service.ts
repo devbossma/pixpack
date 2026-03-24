@@ -108,14 +108,28 @@ export async function generatePack(
 
   const images: GeneratedImage[] = []
 
+  const startTime = Date.now()
+  const VERCEL_SAFE_LIMIT_MS = 165_000 // Stop at 165s to safely write results before 180s hard kill
+
   for (let index = 0; index < scenesWithCopy.length; index++) {
     const scene = scenesWithCopy[index]
-    const preGapMs = (index > 0) ? 20_000 : 0 // Wait 20s between images for quota
     const label = `image ${index + 1}/${scenesWithCopy.length} (${scene.angle})`
+
+    // Bail out cleanly if Vercel is about to kill the lambda
+    const timeRemaining = VERCEL_SAFE_LIMIT_MS - (Date.now() - startTime)
+    if (timeRemaining < 15_000) {
+      console.warn(`[stage3] Vercel timeout approaching (${Math.round((Date.now() - startTime) / 1000)}s elapsed). Skipping ${label} to save pack safely.`)
+      const errRes = buildErrorCard(scene, platform, 'Variation skipped due to cloud execution time limits.')
+      images.push(errRes.image)
+      if (onImage) await onImage(errRes.image, errRes.base64)
+      continue
+    }
+
+    const preGapMs = (index > 0) ? 15_000 : 0 // Wait 15s between images (reduced from 20s)
 
     if (preGapMs > 0) {
       console.log(`[stage3] Waiting ${preGapMs / 1000}s before ${label}...`)
-      await delay(preGapMs)
+      await delay(Math.min(preGapMs, timeRemaining - 5000))
     }
 
     console.log(`[stage3] Starting ${label}`)
@@ -126,8 +140,8 @@ export async function generatePack(
       const result = await retryOnRateLimit(
         () => generateSingleImage(ai, scene, platform, productBase64, productMimeType, userConfig),
         {
-          maxAttempts: 3,
-          backoffMs: 30_000, // Longer backoff for RPM
+          maxAttempts: 2, // Reduced from 3
+          backoffMs: 15_000, // Reduced from 30s
           label: `variation-${scene.variation}(${scene.angle})`
         },
       )
