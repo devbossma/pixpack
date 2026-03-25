@@ -74,7 +74,7 @@ export async function generatePack(
   callbacks: GenerateCallbacks = {},
   resumeState?: { scenesWithCopy: any[]; startImageIndex: number } | null
 ): Promise<
-  | { status: 'done'; pack: GeneratedPack } 
+  | { status: 'done'; pack: GeneratedPack }
   | { status: 'yield'; scenesWithCopy: any[]; stage?: number; stageMessage?: string }
 > {
   const { productProfile, userConfig, marketingLanguage } = input
@@ -82,8 +82,11 @@ export async function generatePack(
   const ai = createVertexClient()
 
   const platform = userConfig.platform ?? 'instagram_post'
+  // Resolve 'auto' to the actual language of the target country.
+  // 'the primary language of the target market' is too vague — Gemini ignores it and writes English.
+  // A concrete language name forces correct output.
   const language = marketingLanguage === 'auto'
-    ? 'the primary language of the target market'
+    ? resolveLanguageFromCountry(userConfig.country)
     : marketingLanguage
 
   let scenesWithCopy = resumeState?.scenesWithCopy
@@ -172,15 +175,15 @@ export async function generatePack(
       console.log(`[stage3] Variation ${scene.variation} (${scene.angle}) OK`)
     } catch (err: unknown) {
       const reason = err instanceof Error ? err.message : 'Image generation failed'
-      
+
       if (isRateLimitError(reason)) {
         // QUOTA ERROR: Yield to get a fresh window in the next worker
         console.warn(`[stage3] Variation ${scene.variation} hit quota limit. Yielding job...`)
-        return { 
-          status: 'yield' as const, 
+        return {
+          status: 'yield' as const,
           scenesWithCopy,
           stage: 3,
-          stageMessage: `Waiting for quota window (resuming at image ${index+1})...`
+          stageMessage: `Waiting for quota window (resuming at image ${index + 1})...`
         }
       }
 
@@ -293,11 +296,11 @@ async function generateAdCopy(
       })
 
       const raw = response.text ?? ''
-      
+
       // Flexible parsing: find first [ or {
       const firstBracket = raw.indexOf('[')
       const firstBrace = raw.indexOf('{')
-      
+
       let copyData: any[] = []
 
       try {
@@ -311,7 +314,7 @@ async function generateAdCopy(
           const parsed = JSON.parse(raw.slice(firstBrace, lastBrace + 1))
           copyData = Array.isArray(parsed) ? parsed : (parsed.variations || parsed.data || parsed.copy || [])
         } else {
-           throw new Error('No JSON structures found in ad copy response')
+          throw new Error('No JSON structures found in ad copy response')
         }
       } catch (e) {
         console.error('[stage2] JSON Parse failed:', e, 'Raw:', raw.slice(0, 200))
@@ -446,4 +449,87 @@ function buildErrorCard(
     },
     base64: null,
   }
+}
+
+
+// ─── Language resolution ───────────────────────────────────────────────────────
+// Maps userConfig.country to the correct ad copy language.
+// Used when marketingLanguage = 'auto'.
+
+const COUNTRY_LANGUAGE_MAP: Record<string, string> = {
+  // Arabic-speaking MENA
+  'Morocco': 'Moroccan Darija Arabic (use Modern Standard Arabic if Darija is unclear)',
+  'Saudi Arabia': 'Arabic',
+  'UAE': 'Arabic',
+  'Egypt': 'Arabic',
+  'Jordan': 'Arabic',
+  'Tunisia': 'Arabic',
+  'Algeria': 'Arabic',
+  'Libya': 'Arabic',
+  'Kuwait': 'Arabic',
+  'Qatar': 'Arabic',
+  'Bahrain': 'Arabic',
+  'Oman': 'Arabic',
+  'Iraq': 'Arabic',
+  'Lebanon': 'Arabic',
+  // French-speaking
+  'France': 'French',
+  'Belgium': 'French',
+  'Switzerland': 'French',
+  'Senegal': 'French',
+  'Ivory Coast': 'French',
+  // Portuguese-speaking
+  'Brazil': 'Brazilian Portuguese',
+  'Portugal': 'Portuguese',
+  // Spanish-speaking
+  'Spain': 'Spanish',
+  'Mexico': 'Spanish',
+  'Argentina': 'Spanish',
+  'Colombia': 'Spanish',
+  'Chile': 'Spanish',
+  'Peru': 'Spanish',
+  // East Asia
+  'China': 'Simplified Chinese',
+  'Taiwan': 'Traditional Chinese',
+  'Hong Kong': 'Traditional Chinese',
+  'Japan': 'Japanese',
+  'South Korea': 'Korean',
+  // South/Southeast Asia
+  'India': 'English',
+  'Indonesia': 'Indonesian',
+  'Malaysia': 'Malay',
+  'Thailand': 'Thai',
+  'Vietnam': 'Vietnamese',
+  'Philippines': 'Filipino (Tagalog)',
+  'Pakistan': 'Urdu',
+  // Europe
+  'Germany': 'German',
+  'Austria': 'German',
+  'Netherlands': 'Dutch',
+  'Italy': 'Italian',
+  'Russia': 'Russian',
+  'Poland': 'Polish',
+  'Turkey': 'Turkish',
+  // English-speaking (default)
+  'United States': 'English',
+  'United Kingdom': 'English',
+  'Canada': 'English',
+  'Australia': 'English',
+  'New Zealand': 'English',
+  'South Africa': 'English',
+  'Nigeria': 'English',
+  'Ghana': 'English',
+  'Kenya': 'English',
+}
+
+function resolveLanguageFromCountry(country?: string): string {
+  if (!country) return 'English'
+  // Exact match
+  const exact = COUNTRY_LANGUAGE_MAP[country]
+  if (exact) return exact
+  // Case-insensitive fallback
+  const lower = country.toLowerCase()
+  const match = Object.entries(COUNTRY_LANGUAGE_MAP)
+    .find(([k]) => k.toLowerCase() === lower)
+  return match ? match[1] : 'English'
 }

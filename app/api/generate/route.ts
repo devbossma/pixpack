@@ -28,7 +28,7 @@ export const maxDuration = 15  // Just needs to trigger the task — very fast
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json()
-        const { productProfile, userConfig, marketingLanguage = 'market language' } = body
+        const { productProfile, userConfig, marketingLanguage = 'auto' } = body
 
         // Validate
         if (!productProfile?.extractedImageUrl) {

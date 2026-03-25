@@ -22,9 +22,11 @@ interface OutputCardProps {
   image: GeneratedImage
   index: number
   onDownloadZip?: () => void
+  /** True when rendered inside the desktop 2×2 grid — removes full-screen height constraints */
+  desktopGrid?: boolean
 }
 
-export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
+export function OutputCard({ image, index, onDownloadZip, desktopGrid }: OutputCardProps) {
   // Social interactions
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -35,6 +37,9 @@ export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
   const [isPaused, setIsPaused] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  // Shopify variant state
+  const [selectedSize, setSelectedSize] = useState('M')
 
   const activeTabId = COPY_TABS[activeIdx].id
 
@@ -132,15 +137,259 @@ export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
     </div>
   )
 
+  // ─── SHOPIFY PRODUCT PAGE MOCKUP ────────────────────────────────────────────
+  if (image.platform === 'shopify_product') {
+    const ANGLE_PRODUCT_NAMES: Record<string, string> = {
+      lifestyle: 'Everyday Essential',
+      hero:      'Premium Edition',
+      context:   'Perfect for Any Setting',
+      closeup:   'Crafted in Detail',
+    }
+    const productName = ANGLE_PRODUCT_NAMES[image.angle] ?? 'Featured Product'
+    const SIZES = ['XS', 'S', 'M', 'L', 'XL']
+
+    const StoreNav = () => (
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#E1E3E5] dark:border-[#3C3C3C] flex-shrink-0 bg-white dark:bg-[#1A1A1A]">
+        <button className="p-1 text-[#5C5F62] dark:text-[#A6A6A6]">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-1">
+          <div className="w-5 h-5 rounded bg-[#008060] flex items-center justify-center">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="white"><path d="M21.9 6.6c-.1-.5-.5-.8-1-.9L8 4.3c-.5-.1-1 .2-1.2.7L3.3 17c-.2.5 0 1 .5 1.3l8 4c.2.1.4.1.6.1.2 0 .5-.1.7-.2l9-5.5c.4-.2.6-.7.5-1.1L21.9 6.6z"/></svg>
+          </div>
+          <span className="text-[13px] font-bold text-[#1A1A1A] dark:text-white tracking-tight">PixPack Store</span>
+        </div>
+        <div className="flex items-center gap-3 text-[#5C5F62] dark:text-[#A6A6A6]">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <div className="relative">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[#008060] text-white text-[8px] font-black flex items-center justify-center">1</span>
+          </div>
+        </div>
+      </div>
+    )
+
+    const ProductDetails = () => (
+      <div className="flex flex-col gap-3 p-4 overflow-y-auto" onClick={() => setIsPaused(true)}>
+        {/* Breadcrumb */}
+        <p className="text-[10px] text-[#5C5F62] dark:text-[#A6A6A6]">Home / Products / <span className="text-[#1A1A1A] dark:text-white">{productName}</span></p>
+
+        {/* Title */}
+        <h1 className="text-[16px] font-bold text-[#1A1A1A] dark:text-white leading-tight">{productName}</h1>
+
+        {/* Rating */}
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5">
+            {[1,2,3,4,5].map(s => (
+              <svg key={s} width="12" height="12" viewBox="0 0 24 24" fill={s <= 4 ? '#FFC453' : 'none'} stroke="#FFC453" strokeWidth={2}>
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            ))}
+          </div>
+          <span className="text-[11px] text-[#5C5F62] dark:text-[#A6A6A6]">4.8 (243 reviews)</span>
+        </div>
+
+        {/* Price */}
+        <div className="flex items-baseline gap-2">
+          <span className="text-[20px] font-black text-[#1A1A1A] dark:text-white">$49.99</span>
+          <span className="text-[13px] text-[#5C5F62] dark:text-[#A6A6A6] line-through">$79.99</span>
+          <span className="text-[11px] font-bold text-[#008060] bg-[#E3F1EC] dark:bg-[#003D2A] px-1.5 py-0.5 rounded">37% OFF</span>
+        </div>
+
+        {/* Size selector */}
+        <div>
+          <p className="text-[11px] font-semibold text-[#5C5F62] dark:text-[#A6A6A6] mb-1.5">SIZE: <span className="text-[#1A1A1A] dark:text-white">{selectedSize}</span></p>
+          <div className="flex gap-1.5 flex-wrap">
+            {SIZES.map(sz => (
+              <button
+                key={sz}
+                onClick={(e) => { e.stopPropagation(); setSelectedSize(sz) }}
+                className={[
+                  'w-9 h-9 rounded-lg border text-[11px] font-semibold transition-all pointer-events-auto',
+                  selectedSize === sz
+                    ? 'border-[#008060] bg-[#008060] text-white shadow-sm'
+                    : 'border-[#C9CCCF] dark:border-[#444] text-[#1A1A1A] dark:text-white hover:border-[#008060]',
+                ].join(' ')}
+              >{sz}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Add to Cart */}
+        <button
+          className="w-full py-3 rounded-xl bg-[#008060] hover:bg-[#006B4F] text-white font-bold text-[14px] transition-all shadow-sm active:scale-[0.98] pointer-events-auto mt-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Add to Cart
+        </button>
+
+        {/* Ad copy as product description — rotating */}
+        <div className="border-t border-[#E1E3E5] dark:border-[#3C3C3C] pt-3 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#008060]/10 text-[#008060] font-black uppercase tracking-widest border border-[#008060]/20">
+              {COPY_TABS[activeIdx].label}
+            </span>
+          </div>
+          <AnimatePresence mode="popLayout">
+            <motion.p
+              key={activeIdx}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.2 }}
+              className={`text-[12px] text-[#5C5F62] dark:text-[#A6A6A6] leading-relaxed ${isExpanded ? '' : 'line-clamp-3'}`}
+            >
+              {image.adCopy[activeTabId] || '…'}
+            </motion.p>
+          </AnimatePresence>
+          {!isExpanded && (image.adCopy[activeTabId]?.length ?? 0) > 100 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setIsExpanded(true); setIsPaused(true) }}
+              className="text-[11px] font-semibold text-[#008060] hover:underline pointer-events-auto text-left"
+            >
+              Show more ↓
+            </button>
+          )}
+          {/* Progress bars */}
+          <div className="flex items-center gap-1.5 mt-1 pointer-events-auto">
+            {COPY_TABS.map((tab, i) => (
+              <button
+                key={tab.id}
+                onClick={(e) => { e.stopPropagation(); setActiveIdx(i); setIsPaused(true) }}
+                className="h-[3px] flex-1 rounded-full overflow-hidden bg-[#E1E3E5] dark:bg-[#3C3C3C] cursor-pointer"
+              >
+                <motion.div
+                  className="h-full bg-[#008060]"
+                  initial={{ width: i < activeIdx ? '100%' : '0%' }}
+                  animate={{ width: i === activeIdx ? '100%' : i < activeIdx ? '100%' : '0%' }}
+                  transition={{ duration: i === activeIdx && !isPaused ? 6 : 0, ease: 'linear' }}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Trust badges */}
+        <div className="flex items-center justify-between pt-1 border-t border-[#E1E3E5] dark:border-[#3C3C3C] mt-1">
+          {[
+            { icon: '🚚', text: 'Free Shipping' },
+            { icon: '↩️', text: '30-Day Returns' },
+            { icon: '🔒', text: 'Secure Checkout' },
+          ].map(b => (
+            <div key={b.text} className="flex flex-col items-center gap-0.5 text-center">
+              <span className="text-[14px]">{b.icon}</span>
+              <span className="text-[8px] font-semibold text-[#5C5F62] dark:text-[#A6A6A6] leading-tight max-w-[60px]">{b.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+
+    return (
+      <motion.div
+        {...cardEntrance(index)}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        className={[
+          'relative w-full bg-white dark:bg-[#1A1A1A] flex flex-col overflow-hidden group',
+          desktopGrid
+            ? 'h-full rounded-none border-0'
+            : 'h-[100dvh] md:h-full md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 snap-center',
+        ].join(' ')}
+      >
+        <StoreNav />
+
+        {/* Download button top-right */}
+        {hasImageSrc(image) && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDownloadZip?.() }}
+            title="Download full pack"
+            className="absolute top-10 right-3 z-20 p-1.5 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-[#008060] transition shadow pointer-events-auto"
+          >
+            <Download size={12} />
+          </button>
+        )}
+
+        {/* Var badge */}
+        <div className="absolute top-10 left-3 z-20 bg-black/50 backdrop-blur-md px-2 py-0.5 rounded text-[9px] font-bold text-white uppercase tracking-widest pointer-events-none">
+          Var {varLetter} · {image.angle}
+        </div>
+
+        {desktopGrid ? (
+          /* ── Desktop: two-column product layout ─────────────────── */
+          <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
+            {/* Left: product image */}
+            <div className="relative w-[55%] flex-shrink-0 bg-[#F6F6F7] dark:bg-[#2A2A2A] flex items-center justify-center overflow-hidden">
+              {image.status === 'error' && !hasImageSrc(image) ? (
+                <div className="flex flex-col items-center gap-2 p-4">
+                  <AlertTriangle size={28} className="text-red-500" />
+                  <p className="text-xs text-[#5C5F62] dark:text-[#A6A6A6]">Generation failed</p>
+                </div>
+              ) : !hasImageSrc(image) ? (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-7 h-7 rounded-full border-[3px] border-[#008060]/20 border-t-[#008060] animate-spin" />
+                  <span className="text-[10px] font-semibold text-[#008060]/70 tracking-widest uppercase">Rendering...</span>
+                </div>
+              ) : (
+                <img src={getImageSrc(image)!} className="w-full h-full object-contain" alt="Shopify Product" />
+              )}
+            </div>
+            {/* Right: product details */}
+            <div className="flex-1 min-w-0 overflow-y-auto bg-white dark:bg-[#1A1A1A]">
+              <ProductDetails />
+            </div>
+          </div>
+        ) : (
+          /* ── Mobile: stacked layout ──────────────────────────────── */
+          <>
+            {/* Product image — top 45% */}
+            <div className="relative bg-[#F6F6F7] dark:bg-[#2A2A2A] flex-shrink-0" style={{ height: '45%' }}>
+              {image.status === 'error' && !hasImageSrc(image) ? (
+                <div className="h-full flex flex-col items-center justify-center gap-2 p-4">
+                  <AlertTriangle size={28} className="text-red-500" />
+                  <p className="text-xs text-[#5C5F62] dark:text-[#A6A6A6]">Generation failed</p>
+                </div>
+              ) : !hasImageSrc(image) ? (
+                <div className="h-full flex flex-col items-center justify-center gap-3">
+                  <div className="w-7 h-7 rounded-full border-[3px] border-[#008060]/20 border-t-[#008060] animate-spin" />
+                  <span className="text-[10px] font-semibold text-[#008060]/70 tracking-widest uppercase">Rendering...</span>
+                </div>
+              ) : (
+                <img src={getImageSrc(image)!} className="w-full h-full object-contain" alt="Shopify Product" />
+              )}
+              {/* Image thumbnails strip placeholder */}
+              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+                {[0,1,2].map(i => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-[#008060]' : 'bg-[#C9CCCF] dark:bg-[#444]'}`} />
+                ))}
+              </div>
+            </div>
+            {/* Product details — bottom 55% scrollable */}
+            <div className="flex-1 min-h-0 overflow-y-auto bg-white dark:bg-[#1A1A1A]">
+              <ProductDetails />
+            </div>
+          </>
+        )}
+      </motion.div>
+    )
+  }
+
   if (image.platform === 'facebook_post') {
     return (
       <motion.div
         {...cardEntrance(index)}
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
-        className="relative w-full h-[100dvh] md:h-full bg-[#E4E6EB] md:bg-[#F0F2F5] dark:bg-[#18191A] md:dark:bg-[#18191A] md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 flex flex-col shrink-0 snap-center group justify-center md:justify-start overflow-hidden pt-safe"
+        className={[
+          'relative w-full bg-[#F0F2F5] dark:bg-[#18191A] flex flex-col shrink-0 group overflow-hidden',
+          desktopGrid
+            ? 'h-full rounded-none border-0' // border provided by parent wrapper
+            : 'h-[100dvh] md:h-full md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 snap-center justify-center md:justify-start pt-safe',
+        ].join(' ')}
       >
-        <div className="bg-white dark:bg-[#242526] w-full shadow-sm flex flex-col shrink-0 h-full md:h-auto overflow-hidden">
+        <div className={['bg-white dark:bg-[#242526] w-full shadow-sm flex flex-col shrink-0 overflow-hidden', desktopGrid ? 'h-full' : 'h-full md:h-auto'].join(' ')}>
           {/* Header */}
           <div className="flex items-center justify-between p-3 shrink-0 pointer-events-auto">
             <div className="flex items-center gap-2">
@@ -266,7 +515,12 @@ export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
       {...cardEntrance(index)}
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
-      className="relative w-full h-[100dvh] md:h-full bg-black md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 overflow-hidden md:shadow-2xl flex flex-col shrink-0 snap-center group"
+      className={[
+        'relative w-full bg-black overflow-hidden flex flex-col shrink-0 group',
+        desktopGrid
+          ? 'h-full rounded-none border-0' // border/rounding from parent wrapper
+          : 'h-[100dvh] md:h-full md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 md:shadow-2xl snap-center',
+      ].join(' ')}
     >
       {/* ── 1. Image Background (Full Bleed) ── */}
       <div className="absolute inset-0 z-0 flex items-center justify-center bg-[#0a0a0a]">
@@ -287,7 +541,7 @@ export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
             transition={{ duration: 0.5 }}
             src={getImageSrc(image)!}
             alt={`Variation ${varLetter}`}
-            className="w-full h-full object-contain md:object-cover"
+            className={desktopGrid ? 'w-full h-full object-contain' : 'w-full h-full object-contain md:object-cover'}
           />
         )}
       </div>

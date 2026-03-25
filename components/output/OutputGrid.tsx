@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { OutputCard } from './OutputCard'
 import type { GeneratedImage, Platform } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
@@ -31,66 +31,82 @@ interface OutputGridProps {
   onDownloadZip?: () => void
 }
 
+/** Returns a CSS aspect-ratio string for the card based on platform spec */
+function getCardAspectRatio(p: Platform | null): string {
+  if (!p) return '1 / 1'
+  const s = PLATFORM_SPECS[p]
+  if (!s) return '1 / 1'
+  // Parse "W:H" from aspectRatio like "1:1", "9:16", "4:5"
+  const [w, h] = s.aspectRatio.split(':').map(Number)
+  if (!w || !h) return `${s.width} / ${s.height}`
+  return `${w} / ${h}`
+}
+
 export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: OutputGridProps) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [canScrollLeft, setCanScrollLeft] = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(true)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const generationState = useGenerationStore(s => s.generationState)
+  const generationState   = useGenerationStore(s => s.generationState)
   const isStateGenerating = generationState.status === 'generating'
-  const stageMessage = isStateGenerating ? generationState.stageMessage : null
-  const stage = isStateGenerating ? generationState.stage : 0
+  const stageMessage      = isStateGenerating ? generationState.stageMessage : null
+  const stage             = isStateGenerating ? generationState.stage : 0
 
-  // Sort images by variation number
   const sortedImages = [...images].sort((a, b) => a.variation - b.variation)
-  const totalSlots = isGenerating ? 4 : sortedImages.length
+  const totalSlots   = isGenerating ? 4 : sortedImages.length
 
-  const resolvedPlatform = platform ?? images[0]?.platform ?? null
-  const platformLabel = resolvedPlatform ? (PLATFORM_LABELS[resolvedPlatform] ?? resolvedPlatform) : null
-  const spec = resolvedPlatform ? PLATFORM_SPECS[resolvedPlatform as Platform] : null
+  const resolvedPlatform = (platform ?? images[0]?.platform ?? null) as Platform | null
+  const platformLabel    = resolvedPlatform ? (PLATFORM_LABELS[resolvedPlatform] ?? resolvedPlatform) : null
+  const spec             = resolvedPlatform ? PLATFORM_SPECS[resolvedPlatform] : null
+  const cardAspect       = getCardAspectRatio(resolvedPlatform)
 
-  function checkScroll(): void {
-    if (!scrollRef.current) return
-    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current
-    
-    setCanScrollLeft(scrollLeft > 20)
-    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 20)
-
-    // Calculate active slide index based on the first visible card's offset
-    const cards = scrollRef.current.children
+  // Mobile scroll tracking
+  function checkMobileScroll() {
+    if (!mobileScrollRef.current) return
+    const { scrollTop } = mobileScrollRef.current
+    const cards         = mobileScrollRef.current.children
     if (cards.length > 0) {
-      const cardWidth = (cards[0] as HTMLElement).offsetWidth + 20 // width + gap
-      const index = Math.round(scrollLeft / cardWidth)
-      setActiveIndex(Math.min(index, totalSlots - 1))
+      const cardH = (cards[0] as HTMLElement).offsetHeight
+      const idx   = Math.round(scrollTop / cardH)
+      setActiveIndex(Math.min(idx, totalSlots - 1))
     }
   }
 
   useEffect(() => {
-    checkScroll()
-    const current = scrollRef.current
-    if (current) {
-      current.addEventListener('scroll', checkScroll)
-      window.addEventListener('resize', checkScroll)
-    }
-    return () => {
-      current?.removeEventListener('scroll', checkScroll)
-      window.removeEventListener('resize', checkScroll)
-    }
+    const el = mobileScrollRef.current
+    if (el) el.addEventListener('scroll', checkMobileScroll, { passive: true })
+    return () => el?.removeEventListener('scroll', checkMobileScroll)
   }, [images.length, isGenerating, totalSlots])
 
-  function scroll(direction: 'left' | 'right'): void {
-    if (!scrollRef.current) return
-    const amount = scrollRef.current.clientWidth * 0.75
-    scrollRef.current.scrollBy({ left: direction === 'left' ? -amount : amount, behavior: 'smooth' })
+  const VARIATION_LETTERS = ['A', 'B', 'C', 'D']
+  const ANGLE_KEYS        = ['lifestyle', 'hero', 'context', 'closeup']
+
+  function SkeletonCard({ slotIndex }: { slotIndex: number }) {
+    const letter     = VARIATION_LETTERS[slotIndex] ?? String(slotIndex + 1)
+    const angleKey   = ANGLE_KEYS[slotIndex]
+    const angleLabel = angleKey ? ANGLE_LABELS[angleKey] : '…'
+
+    return (
+      <div className="w-full h-full rounded-2xl border border-[var(--output-border)] bg-[var(--output-surface)] overflow-hidden flex flex-col opacity-60">
+        <div className="flex items-center justify-between border-b border-[var(--output-border)] px-3 py-1.5 flex-shrink-0">
+          <span className="text-[10px] font-black uppercase tracking-widest text-[var(--output-muted)]">
+            Var {letter}
+          </span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border bg-[var(--output-border)]/20 text-[var(--output-muted)] border-[var(--output-border)]">
+            {angleLabel}
+          </span>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 p-4 bg-[var(--output-bg)]">
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--output-border)] border-t-[var(--accent)] animate-spin" />
+          <span className="text-[10px] text-[var(--output-muted)]">Generating…</span>
+        </div>
+      </div>
+    )
   }
 
-  const VARIATION_LETTERS = ['A', 'B', 'C', 'D']
-  const ANGLE_KEYS = ['lifestyle', 'hero', 'context', 'closeup']
-
   return (
-    <div className="flex flex-col h-full gap-0 md:gap-4 group/grid">
-      {/* ── Header ── */}
+    <div className="flex flex-col h-full gap-0 md:gap-4">
+
+      {/* ── Desktop Header ───────────────────────────────────────── */}
       <div className="hidden md:flex items-center justify-between flex-shrink-0 px-1">
         <div>
           <h2 className="text-sm font-bold text-[var(--output-text)]">
@@ -108,44 +124,19 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
             </p>
           )}
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-1.5 mr-2">
-            <button
-              onClick={() => scroll('left')}
-              disabled={!canScrollLeft}
-              className={[
-                'p-1.5 rounded-lg border border-[var(--output-border)] bg-[var(--output-surface)] text-[var(--output-muted)] transition-all',
-                canScrollLeft ? 'opacity-100 hover:text-[var(--output-text)] hover:border-[var(--accent)] hover:shadow-sm' : 'opacity-30 cursor-not-allowed',
-              ].join(' ')}
-            >
-              <ChevronLeft size={14} />
-            </button>
-            <button
-              onClick={() => scroll('right')}
-              disabled={!canScrollRight}
-              className={[
-                'p-1.5 rounded-lg border border-[var(--output-border)] bg-[var(--output-surface)] text-[var(--output-muted)] transition-all',
-                canScrollRight ? 'opacity-100 hover:text-[var(--output-text)] hover:border-[var(--accent)] hover:shadow-sm' : 'opacity-30 cursor-not-allowed',
-              ].join(' ')}
-            >
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="text-[10px] font-black uppercase tracking-widest text-[var(--output-muted)] bg-[var(--output-border)]/20 px-2 py-1 rounded-md">
-            {sortedImages.filter(i => i.status === 'done').length}/{totalSlots} ready
-          </div>
+        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--output-muted)] bg-[var(--output-border)]/20 px-2 py-1 rounded-md">
+          {sortedImages.filter(i => i.status === 'done').length}/{totalSlots} ready
         </div>
       </div>
 
-      {/* ── Stage banner ── */}
+      {/* ── Stage banner ─────────────────────────────────────────── */}
       <AnimatePresence>
         {isGenerating && stageMessage && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
-            className="flex items-center gap-2.5 bg-[var(--accent)]/10 border border-[var(--accent)]/25 rounded-xl px-4 py-2 flex-shrink-0 mx-1"
+            className="hidden md:flex items-center gap-2.5 bg-[var(--accent)]/10 border border-[var(--accent)]/25 rounded-xl px-4 py-2 flex-shrink-0 mx-1"
           >
             <Loader2 size={13} className="text-[var(--accent)] animate-spin flex-shrink-0" />
             <span className="text-xs font-semibold text-[var(--accent)]">
@@ -155,56 +146,32 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
         )}
       </AnimatePresence>
 
-      {/* ── Carousel Slider ── */}
-      <div className="relative flex-1 min-h-0">
+      {/* ──────────────────────────────────────────────────────────────────
+          MOBILE  — full-screen vertical snap scroll
+      ────────────────────────────────────────────────────────────────── */}
+      <div className="md:hidden relative flex-1 min-h-0">
         <div
-          ref={scrollRef}
-          onScroll={checkScroll}
-          className="flex flex-col md:flex-row h-full overflow-y-auto md:overflow-y-hidden overflow-x-hidden md:overflow-x-auto snap-y md:snap-x snap-mandatory gap-0 md:gap-5 px-0 md:px-1 pb-0 md:pb-4 md:custom-scrollbar-hide no-scrollbar"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          ref={mobileScrollRef}
+          className="flex flex-col h-full overflow-y-auto snap-y snap-mandatory no-scrollbar"
+          style={{ scrollbarWidth: 'none' }}
         >
-          {/* Rendered images */}
           {sortedImages.map((img, idx) => (
-            <div
-              key={img.id}
-              className="flex-shrink-0 w-full h-full md:w-80 lg:w-[360px] snap-center md:snap-start touch-pan-y"
-            >
+            <div key={img.id} className="flex-shrink-0 w-full h-[100dvh] snap-start">
               <OutputCard image={img} index={idx} onDownloadZip={onDownloadZip} />
             </div>
           ))}
 
-          {/* Skeleton slots */}
           {isGenerating && Array.from({ length: Math.max(0, 4 - sortedImages.length) }).map((_, i) => {
-            const slotIndex = sortedImages.length + i
-            const letter = VARIATION_LETTERS[slotIndex] ?? String(slotIndex + 1)
-            const angleKey = ANGLE_KEYS[slotIndex]
-            const angleLabel = angleKey ? ANGLE_LABELS[angleKey] : '…'
-
+            const si = sortedImages.length + i
             return (
-              <div
-                key={`skeleton-${i}`}
-                className="flex-shrink-0 w-full h-[100dvh] md:h-full md:w-80 lg:w-[360px] snap-center md:snap-start"
-              >
-                <div className="md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 bg-[var(--output-surface)] overflow-hidden flex flex-col h-full opacity-60">
-                  <div className="flex items-center justify-between border-b border-[var(--output-border)] px-3 py-1.5 flex-shrink-0">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--output-muted)]">
-                      Var {letter}
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border bg-[var(--output-border)]/20 text-[var(--output-muted)] border-[var(--output-border)]">
-                      {angleLabel}
-                    </span>
-                  </div>
-                  <div className="flex-1 bg-[var(--output-bg)] flex flex-col items-center justify-center gap-3 p-4">
-                    <div className="w-8 h-8 rounded-full border-2 border-[var(--output-border)] border-t-[var(--accent)] animate-spin" />
-                    <span className="text-[10px] text-[var(--output-muted)]">Generating…</span>
-                  </div>
-                </div>
+              <div key={`m-skel-${i}`} className="flex-shrink-0 w-full h-[100dvh] snap-start p-4 flex items-center justify-center">
+                <SkeletonCard slotIndex={si} />
               </div>
             )
           })}
         </div>
 
-        {/* ── Progress Indicators (dots) ── */}
+        {/* Mobile progress dots */}
         <div className="absolute -bottom-1 left-0 right-0 flex justify-center gap-1.5 pointer-events-none">
           {Array.from({ length: totalSlots }).map((_, idx) => (
             <div
@@ -215,6 +182,37 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
               ].join(' ')}
             />
           ))}
+        </div>
+      </div>
+
+      {/* ──────────────────────────────────────────────────────────────────
+          DESKTOP  — 2×2 grid, cards keep their natural platform aspect ratio
+          The grid is scrollable vertically so cards never get squished.
+      ────────────────────────────────────────────────────────────────── */}
+      <div className="hidden md:block flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar-hide">
+        <div className="grid grid-cols-2 gap-4 pb-4">
+          {sortedImages.map((img, idx) => (
+            <div
+              key={img.id}
+              className="w-full overflow-hidden rounded-2xl border border-[var(--output-border)] shadow-lg"
+              style={{ aspectRatio: cardAspect }}
+            >
+              <OutputCard image={img} index={idx} onDownloadZip={onDownloadZip} desktopGrid />
+            </div>
+          ))}
+
+          {isGenerating && Array.from({ length: Math.max(0, 4 - sortedImages.length) }).map((_, i) => {
+            const si = sortedImages.length + i
+            return (
+              <div
+                key={`d-skel-${i}`}
+                className="w-full overflow-hidden rounded-2xl border border-[var(--output-border)]"
+                style={{ aspectRatio: cardAspect }}
+              >
+                <SkeletonCard slotIndex={si} />
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
