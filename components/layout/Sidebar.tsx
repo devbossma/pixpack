@@ -17,6 +17,9 @@ export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const isGenerating = pipelineStatus !== 'idle' && pipelineStatus !== 'done'
 
+  // PREVIEW MODE: Hide the entire configuration UI when the pack is successfully generated.
+  if (pipelineStatus === 'done') return null
+
   const mainContent = (
     <>
       {/* Product photo */}
@@ -127,22 +130,13 @@ export function Sidebar() {
             ].join(' ')}
             aria-label="Generate your pack"
           >
-            {pipelineStatus === 'done' && !isGenerateEnabled ? (
-              <>
-                <RefreshCw size={14} />
-                Change settings to regenerate
-              </>
-            ) : (
-              <>
-                <Wand2 size={14} />
-                Generate your pack
-              </>
-            )}
+            <Wand2 size={14} />
+            Generate your pack
           </button>
         )}
       </AnimatePresence>
 
-      {!isGenerating && !isGenerateEnabled && pipelineStatus !== 'done' && (
+      {!isGenerating && !isGenerateEnabled && (
         <p className="text-[10px] text-center text-[var(--text-muted)] leading-relaxed">
           Upload a photo, pick a platform &amp; audience to unlock
         </p>

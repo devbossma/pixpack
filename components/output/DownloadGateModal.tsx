@@ -309,17 +309,19 @@ export function DownloadGateModal({ pack, onClose }: DownloadGateModalProps) {
 
               <button
                 id="download-gate-close"
-                onClick={onClose}
-                className="px-6 py-2 rounded-xl text-sm font-medium transition-colors"
-                style={{
-                  backgroundColor: 'var(--surface2)',
-                  border:          '1px solid var(--border)',
-                  color:           'var(--text)',
+                onClick={() => {
+                  onClose()
+                  window.location.reload()
                 }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--border-hover)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                className="w-full mt-4 px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-lg"
+                style={{
+                  backgroundColor: 'var(--accent)',
+                  color:           '#fff',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.filter = 'brightness(1.1)')}
+                onMouseLeave={e => (e.currentTarget.style.filter = 'none')}
               >
-                Close
+                Create another pack →
               </button>
             </motion.div>
           )}

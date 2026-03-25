@@ -98,6 +98,169 @@ export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
   const spec = PLATFORM_SPECS[image.platform as Platform] ?? PLATFORM_SPECS.instagram_post
   const varLetter = VARIATION_LETTERS[(image.variation - 1)] ?? 'X'
 
+  const progressBars = (
+    <div className="absolute bottom-0 inset-x-0 z-30 px-3 pb-3 pointer-events-none flex flex-col gap-1.5 mt-auto w-full drop-shadow-lg">
+       {/* Tab Label */}
+       <div className="flex items-center">
+          <span className="text-[9px] px-2 py-0.5 rounded bg-[#ff4d1c] font-black uppercase tracking-widest text-white shadow-md pointer-events-auto">
+            {COPY_TABS[activeIdx].label}
+          </span>
+       </div>
+
+       {/* Progress Bars Indicator */}
+       <div className="flex items-center gap-1 pointer-events-auto">
+         {COPY_TABS.map((tab, i) => (
+           <button
+             key={tab.id}
+             onClick={(e) => { e.stopPropagation(); setActiveIdx(i); setIsPaused(true) }}
+             className="h-[3px] flex-1 rounded-full overflow-hidden bg-white/40 cursor-pointer backdrop-blur-sm shadow-sm"
+           >
+             <motion.div
+               className="h-full bg-[#ff4d1c] shadow-[0_0_10px_rgba(255,77,28,0.8)]"
+               initial={{ width: i < activeIdx ? '100%' : '0%' }}
+               animate={{
+                 width: i === activeIdx ? '100%' : i < activeIdx ? '100%' : '0%'
+               }}
+               transition={{
+                 duration: i === activeIdx && !isPaused ? 6 : 0,
+                 ease: "linear"
+               }}
+             />
+           </button>
+         ))}
+       </div>
+    </div>
+  )
+
+  if (image.platform === 'facebook_post') {
+    return (
+      <motion.div
+        {...cardEntrance(index)}
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={() => setIsPaused(false)}
+        className="relative w-full h-[100dvh] md:h-full bg-[#E4E6EB] md:bg-[#F0F2F5] dark:bg-[#18191A] md:dark:bg-[#18191A] md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 flex flex-col shrink-0 snap-center group justify-center md:justify-start overflow-hidden pt-safe"
+      >
+        <div className="bg-white dark:bg-[#242526] w-full shadow-sm flex flex-col shrink-0 h-full md:h-auto overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 shrink-0 pointer-events-auto">
+            <div className="flex items-center gap-2">
+               <div className="w-10 h-10 rounded-full bg-[#ff4d1c] text-white flex items-center justify-center font-bold tracking-tighter shadow-inner">PP</div>
+               <div className="flex flex-col">
+                  <span className="font-bold text-[14px] text-[#050505] dark:text-[#E4E6EB] leading-tight flex items-center gap-1">PixPack <BadgeCheck size={12} className="text-[#0866FF]" fill="currentColor" stroke="white" /></span>
+                  <span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8] font-medium flex items-center gap-1">Sponsored <span className="text-[8px]">•</span> <span className="w-2.5 h-2.5 rounded-full border border-[#65676B] dark:border-[#B0B3B8] opacity-60" /></span>
+               </div>
+            </div>
+            <div className="flex gap-4 text-[#65676B] dark:text-[#B0B3B8]">
+              <MoreHorizontal size={20} />
+            </div>
+          </div>
+          
+          {/* Caption above image */}
+          <div 
+            className="px-3 pb-3 cursor-pointer shrink-0"
+            onClick={() => { setIsExpanded(!isExpanded); setIsPaused(true) }}
+            onTouchStart={() => setIsPaused(true)}
+          >
+            <AnimatePresence mode="popLayout">
+              <motion.div
+                key={activeIdx}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -5 }}
+                transition={{ duration: 0.2 }}
+                className={`text-[14px] text-[#050505] dark:text-[#E4E6EB] leading-snug whitespace-pre-wrap ${isExpanded ? '' : 'line-clamp-3'}`}
+              >
+                 {image.adCopy[activeTabId] || '...'}
+              </motion.div>
+            </AnimatePresence>
+            {!isExpanded && (image.adCopy[activeTabId]?.length ?? 0) > 120 && (
+               <span className="text-[14px] font-semibold text-[#65676B] dark:text-[#B0B3B8] hover:underline mt-0.5 block">See more</span>
+            )}
+          </div>
+
+          {/* Image (Dynamically sized to fit without scrolling) */}
+          <div className="relative w-full flex-1 min-h-[0px] bg-zinc-100 dark:bg-zinc-900 flex flex-col items-center justify-center overflow-hidden">
+            {image.status === 'error' && !hasImageSrc(image) ? (
+              <div className="flex flex-col items-center justify-center gap-2 p-4">
+                <AlertTriangle size={32} className="text-red-500" />
+                <p className="text-sm text-zinc-500 font-medium tracking-wide">Generation failed</p>
+              </div>
+            ) : !hasImageSrc(image) ? (
+              <div className="flex flex-col items-center justify-center gap-4">
+                <div className="w-8 h-8 rounded-full border-[3px] border-[#0866FF]/20 border-t-[#0866FF] animate-spin" />
+                <span className="text-xs font-semibold text-[#0866FF]/70 tracking-widest uppercase">Rendering...</span>
+              </div>
+            ) : (
+              <img src={getImageSrc(image)!} className="w-full h-full object-cover" alt="Facebook Ad Creative" />
+            )}
+
+            {/* Top Right Pack Download */}
+            <button
+              onClick={(e) => { e.stopPropagation(); onDownloadZip?.() }}
+              title="Download full pack"
+              className="absolute top-2 right-2 z-10 p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-[#0866FF] transition shadow-lg pointer-events-auto"
+            >
+              <Download size={14} />
+            </button>
+            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-widest pointer-events-none shadow-sm">
+               Var {varLetter} <span className="text-white/50 mx-1">•</span> {image.angle}
+            </div>
+          </div>
+
+          {/* Facebook Link Preview CTA */}
+          <div className="bg-[#F0F2F5] dark:bg-[#3A3B3C] px-4 py-2 border-b border-t border-[#E4E6EB] dark:border-[#3E4042] flex flex-col shrink-0">
+            <span className="text-[12px] text-[#65676B] dark:text-[#B0B3B8] font-medium uppercase tracking-wider mb-0.5">PIXPACK.CO</span>
+            <div className="flex items-center justify-between">
+              <span className="text-[15px] font-bold text-[#050505] dark:text-[#E4E6EB] leading-tight line-clamp-1">Transform Your Products Today</span>
+              <button className="bg-[#E4E6EB] dark:bg-[#4E4F50] hover:bg-[#D8DADF] dark:hover:bg-[#5E5F60] text-[#050505] dark:text-[#E4E6EB] font-semibold px-4 py-1.5 rounded-md text-[14px] transition ml-2 shrink-0 pointer-events-auto">Shop Now</button>
+            </div>
+          </div>
+
+          {/* Engagement Row */}
+          <div className="px-4 py-2 pointer-events-auto pb-4 shrink-0">
+             <div className="flex items-center justify-between text-[#65676B] dark:text-[#B0B3B8] text-[13px] border-b border-[#CED0D4] dark:border-[#3E4042] pb-2 mb-2">
+               <div className="flex items-center gap-1"><Heart size={14} className="fill-[#0866FF] text-[#0866FF] bg-white dark:bg-[#242526] rounded-full"/> {likesCount}</div>
+               <div className="hover:underline cursor-pointer">84 Comments • 12 Shares</div>
+             </div>
+             <div className="flex items-center justify-between text-[#65676B] dark:text-[#B0B3B8] px-2 font-semibold text-[14px]">
+               <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#F0F2F5] dark:hover:bg-[#3A3B3C] rounded-md cursor-pointer transition text-[#65676B] dark:text-[#B0B3B8]" onClick={handleLike}>
+                 <Heart size={18} className={liked ? 'fill-[#0866FF] text-[#0866FF]' : ''} /> Like
+               </div>
+               <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#F0F2F5] dark:hover:bg-[#3A3B3C] rounded-md cursor-pointer transition"><MessageCircle size={18}/> Comment</div>
+               <div className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#F0F2F5] dark:hover:bg-[#3A3B3C] rounded-md cursor-pointer transition"><Send size={18}/> Share</div>
+             </div>
+          </div>
+
+          {/* Facebook Ad Copy Type Indicator */}
+          <div className="px-4 pb-4 pt-2 border-t border-[#E4E6EB] dark:border-[#3E4042] flex flex-col gap-2 pointer-events-auto shrink-0">
+             <div className="flex items-center gap-2">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0866FF]/10 text-[#0866FF] font-black uppercase tracking-widest border border-[#0866FF]/20 shadow-sm">
+                  {COPY_TABS[activeIdx].label}
+                </span>
+             </div>
+             <div className="flex items-center gap-1 w-full mt-0.5">
+               {COPY_TABS.map((tab, i) => (
+                 <button
+                   key={tab.id}
+                   onClick={(e) => { e.stopPropagation(); setActiveIdx(i); setIsPaused(true) }}
+                   className="h-[4px] flex-1 rounded-full overflow-hidden bg-[#E4E6EB] dark:bg-[#3E4042] cursor-pointer"
+                 >
+                   <motion.div
+                     className="h-full bg-[#0866FF]"
+                     initial={{ width: i < activeIdx ? '100%' : '0%' }}
+                     animate={{ width: i === activeIdx ? '100%' : i < activeIdx ? '100%' : '0%' }}
+                     transition={{ duration: i === activeIdx && !isPaused ? 6 : 0, ease: "linear" }}
+                   />
+                 </button>
+               ))}
+             </div>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
+
+  // default return (Instagram Post/Reels/TikTok)
   return (
     <motion.div
       {...cardEntrance(index)}
@@ -233,47 +396,7 @@ export function OutputCard({ image, index, onDownloadZip }: OutputCardProps) {
         </div>
       </div>
 
-      {/* ── 6. Progress Bars & Tab Info at absolute bottom ── */}
-      <div className="absolute bottom-0 inset-x-0 z-30 px-3 pb-3 pointer-events-none flex flex-col gap-2">
-         {/* Tab Label & Copy Button */}
-         <div className="flex items-center justify-between">
-            <span className="text-[9px] px-2 py-0.5 rounded bg-[#ff4d1c] font-black uppercase tracking-widest text-white shadow-lg pointer-events-auto">
-              {COPY_TABS[activeIdx].label}
-            </span>
-            {hasImageSrc(image) && (
-              <button
-                onClick={(e) => { e.stopPropagation(); copyToClipboard(image.adCopy[activeTabId] ?? '') }}
-                className="pointer-events-auto text-white/80 hover:text-white flex items-center gap-1.5 text-[10px] font-bold bg-black/40 px-2 py-1 rounded backdrop-blur-md transition-colors border border-white/10 shadow-sm"
-              >
-                {copied ? <CheckCircle size={12} className="text-green-500" /> : <Clipboard size={12} />}
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            )}
-         </div>
-
-         {/* Progress Bars Indicator */}
-         <div className="flex items-center gap-1 pointer-events-auto mt-0.5">
-           {COPY_TABS.map((tab, i) => (
-             <button
-               key={tab.id}
-               onClick={(e) => { e.stopPropagation(); setActiveIdx(i); setIsPaused(true) }}
-               className="h-[3px] flex-1 rounded-full overflow-hidden bg-white/20 cursor-pointer backdrop-blur-sm"
-             >
-               <motion.div
-                 className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.8)]"
-                 initial={{ width: i < activeIdx ? '100%' : '0%' }}
-                 animate={{
-                   width: i === activeIdx ? '100%' : i < activeIdx ? '100%' : '0%'
-                 }}
-                 transition={{
-                   duration: i === activeIdx && !isPaused ? 6 : 0,
-                   ease: "linear"
-                 }}
-               />
-             </button>
-           ))}
-         </div>
-      </div>
+      {progressBars}
     </motion.div>
   )
 }
