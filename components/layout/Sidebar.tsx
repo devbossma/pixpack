@@ -111,15 +111,12 @@ export function Sidebar() {
             </span>
           </motion.div>
         ) : (
-          <motion.button
+          <button
             key="cta"
             type="button"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            onClick={(e) => { 
-                e.preventDefault()
+            onClick={() => { 
                 runPipeline()
-                if (window.innerWidth < 768) setMobileOpen(false)
+                if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileOpen(false)
             }}
             disabled={!isGenerateEnabled}
             className={[
@@ -141,7 +138,7 @@ export function Sidebar() {
                 Generate your pack
               </>
             )}
-          </motion.button>
+          </button>
         )}
       </AnimatePresence>
 
