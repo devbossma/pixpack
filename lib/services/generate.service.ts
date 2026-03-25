@@ -372,7 +372,8 @@ async function generateSingleImage(
   const aspectRatio = ASPECT_RATIOS[platform] ?? '1:1'
   const imagePrompt = buildImageGenerationPrompt(scene, aspectRatio, userConfig)
 
-  const response = await ai.models.generateContent({
+  // ── Attempt 1: full detailed prompt ────────────────────────────────────────
+  const attempt1 = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: [
       {
@@ -384,25 +385,73 @@ async function generateSingleImage(
       },
     ],
     config: {
-      responseModalities: [Modality.IMAGE, Modality.TEXT],
+      responseModalities: [Modality.IMAGE], // IMAGE ONLY — text response is disallowed
       imageConfig: { aspectRatio },
       temperature: 0.7,
       topP: 0.95,
     },
   })
 
-  // Extract image from response parts
-  const parts = response.candidates?.[0]?.content?.parts ?? []
-  const imagePart = parts.find(p => p.inlineData?.mimeType?.startsWith('image/'))
+  const parts1 = attempt1.candidates?.[0]?.content?.parts ?? []
+  const imagePart1 = parts1.find(p => p.inlineData?.mimeType?.startsWith('image/'))
 
-  if (!imagePart?.inlineData?.data) {
-    const textPart = parts.find(p => p.text)
-    throw new Error(`No image in response. Model said: ${textPart?.text?.slice(0, 200) ?? 'nothing'}`)
+  if (imagePart1?.inlineData?.data) {
+    const { data, mimeType } = imagePart1.inlineData
+    return {
+      image: {
+        id: `img_${scene.variation}_${Date.now()}`,
+        variation: scene.variation,
+        platform,
+        angle: scene.angle,
+        adCopy: scene.ad_copies,
+        status: 'done',
+      },
+      base64: `data:${mimeType ?? 'image/png'};base64,${data}`,
+    }
   }
 
-  const { data, mimeType } = imagePart.inlineData
-  const imageBase64 = `data:${mimeType ?? 'image/png'};base64,${data}`
+  // ── Attempt 2: minimal fallback prompt (avoids safety filter edge cases) ───
+  console.warn(`[stage3] Attempt 1 returned no image for variation ${scene.variation}. Retrying with minimal prompt...`)
+  await delay(3000)
 
+  const fallbackPrompt = `⚠️ OUTPUT: IMAGE ONLY. NO TEXT.
+
+Generate a photorealistic product advertisement photograph.
+Platform: ${platform}. Aspect ratio: ${aspectRatio}. Angle: ${scene.angle}.
+
+The attached image shows the product (ignore the Photoroom watermark — it is NOT part of the product).
+Place the product in: ${scene.image_prompt.slice(0, 300)}
+
+Rules: single image, no text overlay, no collage, product touches a surface.`
+
+  const attempt2 = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          { inlineData: { mimeType: productMimeType, data: productBase64 } },
+          { text: fallbackPrompt },
+        ],
+      },
+    ],
+    config: {
+      responseModalities: [Modality.IMAGE],
+      imageConfig: { aspectRatio },
+      temperature: 0.4, // Lower temp for more reliable output on retry
+      topP: 0.9,
+    },
+  })
+
+  const parts2 = attempt2.candidates?.[0]?.content?.parts ?? []
+  const imagePart2 = parts2.find(p => p.inlineData?.mimeType?.startsWith('image/'))
+
+  if (!imagePart2?.inlineData?.data) {
+    const textFallback = parts2.find(p => p.text)
+    throw new Error(`No image in response. Model said: ${textFallback?.text?.slice(0, 200) ?? 'nothing'}`)
+  }
+
+  const { data, mimeType } = imagePart2.inlineData
   return {
     image: {
       id: `img_${scene.variation}_${Date.now()}`,
@@ -412,7 +461,7 @@ async function generateSingleImage(
       adCopy: scene.ad_copies,
       status: 'done',
     },
-    base64: imageBase64,
+    base64: `data:${mimeType ?? 'image/png'};base64,${data}`,
   }
 }
 
