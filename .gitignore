@@ -82,3 +82,5 @@ scripts/test-*.ts
 scripts/test-*.js
 code-snipet/
 
+
+.trigger

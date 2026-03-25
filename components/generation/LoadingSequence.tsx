@@ -49,8 +49,8 @@ export function LoadingSequence({ state }: LoadingSequenceProps) {
                 style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}
             >
                 <QueuePosition
-                    position={state.position}
-                    estimatedWait={state.estimatedWait}
+                    position={state.position ?? 1}
+                    estimatedWait={state.estimatedWait ?? 0}
                 />
             </div>
         )
