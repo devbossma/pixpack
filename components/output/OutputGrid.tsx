@@ -28,9 +28,10 @@ interface OutputGridProps {
   images: GeneratedImage[]
   platform?: string
   isGenerating?: boolean
+  onDownloadZip?: () => void
 }
 
-export function OutputGrid({ images, platform, isGenerating }: OutputGridProps) {
+export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: OutputGridProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -88,9 +89,9 @@ export function OutputGrid({ images, platform, isGenerating }: OutputGridProps) 
   const ANGLE_KEYS = ['lifestyle', 'hero', 'context', 'closeup']
 
   return (
-    <div className="flex flex-col h-full gap-4 group/grid">
+    <div className="flex flex-col h-full gap-0 md:gap-4 group/grid">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between flex-shrink-0 px-1">
+      <div className="hidden md:flex items-center justify-between flex-shrink-0 px-1">
         <div>
           <h2 className="text-sm font-bold text-[var(--output-text)]">
             A/B Test Variations
@@ -159,16 +160,16 @@ export function OutputGrid({ images, platform, isGenerating }: OutputGridProps) 
         <div
           ref={scrollRef}
           onScroll={checkScroll}
-          className="flex h-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory gap-5 px-1 pb-4 custom-scrollbar-hide no-scrollbar"
+          className="flex flex-col md:flex-row h-full overflow-y-auto md:overflow-y-hidden overflow-x-hidden md:overflow-x-auto snap-y md:snap-x snap-mandatory gap-0 md:gap-5 px-0 md:px-1 pb-0 md:pb-4 md:custom-scrollbar-hide no-scrollbar"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {/* Rendered images */}
           {sortedImages.map((img, idx) => (
             <div
               key={img.id}
-              className="flex-shrink-0 w-[85%] sm:w-[calc(50%-10px)] md:w-80 lg:w-[360px] h-full snap-start"
+              className="flex-shrink-0 w-full h-full md:w-80 lg:w-[360px] snap-center md:snap-start touch-pan-y"
             >
-              <OutputCard image={img} index={idx} />
+              <OutputCard image={img} index={idx} onDownloadZip={onDownloadZip} />
             </div>
           ))}
 
@@ -182,9 +183,9 @@ export function OutputGrid({ images, platform, isGenerating }: OutputGridProps) 
             return (
               <div
                 key={`skeleton-${i}`}
-                className="flex-shrink-0 w-[85%] sm:w-[calc(50%-10px)] md:w-80 lg:w-[360px] h-full snap-start"
+                className="flex-shrink-0 w-full h-[100dvh] md:h-full md:w-80 lg:w-[360px] snap-center md:snap-start"
               >
-                <div className="rounded-xl border border-[var(--output-border)] bg-[var(--output-surface)] overflow-hidden flex flex-col h-full opacity-60">
+                <div className="md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 bg-[var(--output-surface)] overflow-hidden flex flex-col h-full opacity-60">
                   <div className="flex items-center justify-between border-b border-[var(--output-border)] px-3 py-1.5 flex-shrink-0">
                     <span className="text-[10px] font-black uppercase tracking-widest text-[var(--output-muted)]">
                       Var {letter}

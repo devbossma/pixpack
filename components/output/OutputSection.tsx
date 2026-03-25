@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { PackSummary } from './PackSummary'
 import { OutputGrid } from './OutputGrid'
 import { ActionBar } from './ActionBar'
@@ -7,6 +8,8 @@ import { Wand2 } from 'lucide-react'
 import type { GeneratedPack, GeneratedImage } from '@/types'
 import { useGenerationStore, selectIsGenerating } from '@/hooks/useGeneration'
 import { LoadingSequence } from '@/components/generation/LoadingSequence'
+import { DownloadGateModal } from './DownloadGateModal'
+import { AnimatePresence } from 'framer-motion'
 
 interface OutputSectionProps {
   pack: GeneratedPack | null
@@ -15,6 +18,8 @@ interface OutputSectionProps {
 export function OutputSection({ pack }: OutputSectionProps) {
   const isGenerating = useGenerationStore(selectIsGenerating)
   const generationState = useGenerationStore(s => s.generationState)
+
+  const [showModal, setShowModal] = useState(false)
 
   if (isGenerating && (
     generationState.status === 'queued' || 
@@ -54,16 +59,22 @@ export function OutputSection({ pack }: OutputSectionProps) {
     <div className="flex flex-col h-full overflow-hidden bg-[var(--output-bg)]">
       {/* Header & Actions — only when fully generated */}
       {pack && !isGenerating && (
-        <div className="flex-shrink-0 px-5 pt-5 pb-3 space-y-3 border-b border-[var(--output-border)]">
+        <div className="hidden md:block flex-shrink-0 px-5 pt-5 pb-3 space-y-3 border-b border-[var(--output-border)]">
           <PackSummary pack={pack} />
           <ActionBar pack={pack} />
         </div>
       )}
 
       {/* Grid — fills remaining height */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5">
-        <OutputGrid images={displayImages} platform={displayPlatform} isGenerating={isGenerating} />
+      <div className="flex-1 min-h-0 overflow-y-auto px-0 py-0 md:px-5 md:py-5">
+        <OutputGrid images={displayImages} platform={displayPlatform} isGenerating={isGenerating} onDownloadZip={() => setShowModal(true)} />
       </div>
+
+      <AnimatePresence>
+        {showModal && pack && (
+          <DownloadGateModal pack={pack} onClose={() => setShowModal(false)} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
