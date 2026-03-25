@@ -70,6 +70,7 @@ export function UploadZone() {
   return (
     <div className="w-full">
       <input
+        id="file-upload"
         type="file"
         ref={fileInputRef}
         className="hidden"
