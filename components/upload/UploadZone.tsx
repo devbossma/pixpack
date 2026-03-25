@@ -20,8 +20,8 @@ export function UploadZone() {
     resetState()
     setUploadState({ status: 'processing', message: 'Reading file...' })
     try {
-      if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-        throw new Error('Please upload a JPG, PNG, or WEBP image.')
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please upload a valid image file.')
       }
       if (file.size > 10 * 1024 * 1024) {
         throw new Error('Image must be under 10MB.')
@@ -72,37 +72,37 @@ export function UploadZone() {
         type="file"
         ref={fileInputRef}
         className="hidden"
-        accept="image/jpeg, image/png, image/webp"
+        accept="image/*"
         onChange={handleFileChange}
       />
       
       <AnimatePresence mode="wait">
         {uploadState.status === 'ready' ? (
-          <motion.div
-            key="ready"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="w-full aspect-square relative rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] group"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img 
-              src={uploadState.previewUrl} 
-              alt="Product Preview" 
-              className="w-full h-full object-contain"
-            />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-              {/* "Change Photo" opens the picker directly — no idle reset */}
-              <button 
-                onClick={openPicker}
-                className="bg-[var(--surface)] hover:bg-[var(--surface2)] border border-[var(--border)] text-[var(--text)] px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition"
-              >
-                Change Photo
-              </button>
-            </div>
-            <div className="absolute top-2 left-2 bg-[var(--accent3)] text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow">
-              <CheckCircle2 size={12} /> Ready
-            </div>
+            <motion.div
+              key="ready"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={openPicker}
+              className="w-full aspect-square relative rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--surface)] group cursor-pointer"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={uploadState.previewUrl} 
+                alt="Product Preview" 
+                className="w-full h-full object-contain pointer-events-none"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 lg:group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                <button 
+                  type="button"
+                  className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] px-4 py-2 rounded-lg text-xs font-semibold shadow-md transition"
+                >
+                  Tap to Change Photo
+                </button>
+              </div>
+              <div className="absolute top-2 left-2 bg-[var(--accent3)] text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shadow">
+                <CheckCircle2 size={12} /> Ready
+              </div>
           </motion.div>
         ) : (
           <motion.div

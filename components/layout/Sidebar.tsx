@@ -113,9 +113,14 @@ export function Sidebar() {
         ) : (
           <motion.button
             key="cta"
+            type="button"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            onClick={() => { runPipeline(); setMobileOpen(false) }}
+            onClick={(e) => { 
+                e.preventDefault()
+                runPipeline()
+                if (window.innerWidth < 768) setMobileOpen(false)
+            }}
             disabled={!isGenerateEnabled}
             className={[
               'w-full flex items-center justify-center gap-2 font-bold text-sm py-3 rounded-xl transition-all',
