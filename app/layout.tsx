@@ -35,7 +35,7 @@ export const viewport: Viewport = {
 // ─── Full Metadata ────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
   title: {
-    default: 'PixPack | AI Ad Packs While Your Coffee Brews',
+    default: 'PixPack | Your A/B Testing Ad Packs While Your Coffee Brews',
     template: '%s | PixPack',
   },
   description: 'Turn one photo into 4 A/B-ready ad creatives for Instagram, TikTok & Shopify—with copy—while your coffee brews. No studio needed.',
@@ -112,13 +112,13 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     siteName: 'PixPack',
     locale: 'en_US',
-    title: 'PixPack | AI Ad Packs While Your Coffee Brews',
+    title: 'PixPack | Your A/B Testing Ad Packs While Your Coffee Brews',
     description: 'Turn one photo into 4 A/B-ready ad creatives for Instagram, TikTok & Shopify—with copy—while your coffee brews. No studio needed.',
     images: [{
       url: '/og-image.png',
       width: 1200,
       height: 630,
-      alt: 'PixPack — AI product content pack generator',
+      alt: 'PixPack | Your A/B Testing Ad Packs While Your Coffee Brews',
       type: 'image/png',
     }],
   },
@@ -126,7 +126,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: siteConfig.handle,
     creator: siteConfig.handle,
-    title: 'PixPack | AI Ad Packs While Your Coffee Brews',
+    title: 'PixPack | Your A/B Testing Ad Packs While Your Coffee Brews',
     description: 'One product photo → 12 platform-native ad variations while your coffee brews.',
     images: ['/og-image.png'],
   },
@@ -159,7 +159,7 @@ const jsonLd = {
       '@type': 'WebApplication',
       name: 'PixPack',
       url: siteConfig.url,
-      title: 'PixPack — AI Product Ad Generator | One Photo → Full Ad Pack while your coffee brews',
+      title: 'PixPack | Your A/B Testing Ad Packs While Your Coffee Brews',
       description: 'Turn one supplier product photo into 4 A/B-ready ad creatives for Instagram, TikTok, Facebook, and Shopify — with localised copy — while your coffee brews. No studio, no agency.',
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
