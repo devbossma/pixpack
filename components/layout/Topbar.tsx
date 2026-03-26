@@ -18,15 +18,11 @@ export function Topbar() {
       className="h-14 flex items-center justify-between px-4 sm:px-6 border-b border-[var(--topbar-border)] bg-[var(--topbar-bg)]/80 backdrop-blur-md sticky top-0 z-50 flex-shrink-0"
     >
       <div className="flex items-center gap-4 sm:gap-6">
-        <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <Image
-            src="/logo.png"
-            alt="PixPack"
-            width={120}
-            height={32}
-            className="h-6 sm:h-8 w-auto object-contain"
-            priority
-          />
+        <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+          <span className="font-display font-black text-lg md:text-xl tracking-tighter leading-none flex items-center">
+            <span className="text-[var(--text)]">Pix</span>
+            <span className="text-[var(--accent)]">Pack</span>
+          </span>
         </Link>
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent)]/20 uppercase tracking-widest font-display">
