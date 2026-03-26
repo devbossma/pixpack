@@ -57,9 +57,10 @@ function BeforeCard() {
   return (
     <motion.div
       initial={{ opacity: 0, x: -30 }}
-      animate={{ opacity: 1, x: 0 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={{ once: true }}
       transition={{ duration: 0.7, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="relative w-44 flex-shrink-0"
+      className="relative w-36 md:w-44 flex-shrink-0"
     >
       {/* Label */}
       <p className="text-[10px] font-bold uppercase tracking-widest text-[#605c55] mb-2 text-center">Your photo</p>
@@ -94,18 +95,18 @@ function BeforeCard() {
 function PipelineConnector() {
   return (
     <motion.div
-      initial={{ opacity: 0, scaleX: 0 }}
-      animate={{ opacity: 1, scaleX: 1 }}
+      initial={{ opacity: 0, scale: 0 }}
+      whileInView={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.8 }}
-      className="flex flex-col items-center gap-2 px-2 flex-shrink-0"
+      className="flex flex-row md:flex-col items-center gap-3 md:gap-2 px-2 flex-shrink-0 py-4 md:py-0"
     >
       {/* AI badge */}
       <div className="bg-[#ff4d1c] rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-[0_0_20px_rgba(255,77,28,0.4)]">
         <Sparkles size={11} className="text-white" />
-        <span className="text-[10px] font-black text-white uppercase tracking-widest">PixPack AI</span>
+        <span className="text-[10px] font-black text-white uppercase tracking-widest">AI</span>
       </div>
       {/* Animated dashes */}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-row md:flex-col items-center gap-1">
         {[0, 1, 2, 3, 4].map(i => (
           <motion.div
             key={i}
@@ -115,7 +116,8 @@ function PipelineConnector() {
           />
         ))}
       </div>
-      <ArrowRight size={16} className="text-[#ff4d1c]" />
+      <ArrowRight size={16} className="text-[#ff4d1c] hidden md:block" />
+      <ArrowRight size={16} className="text-[#ff4d1c] block md:hidden rotate-90" />
     </motion.div>
   )
 }
@@ -131,10 +133,10 @@ function AfterCards({ activePlatformIdx }: { activePlatformIdx: number }) {
       {AD_ANGLES.map((angle, i) => (
         <motion.div
           key={`${activePlatformIdx}-${i}`}
-          initial={{ opacity: 0, x: 30, scale: 0.9 }}
-          animate={{ opacity: 1, x: 0, scale: 1 }}
+          initial={{ opacity: 0, x: 20, scale: 0.95 }}
+          whileInView={{ opacity: 1, x: 0, scale: 1 }}
           transition={{ duration: 0.45, delay: i * 0.12 + 0.05, ease: [0.16, 1, 0.3, 1] }}
-          className={`relative flex items-center gap-2 rounded-lg border border-[#2a2a25] bg-gradient-to-r ${platform.accent} bg-[#141412] px-3 py-2.5 w-52 overflow-hidden`}
+          className={`relative flex items-center gap-2 rounded-lg border border-[#2a2a25] bg-gradient-to-r ${platform.accent} bg-[#141412] px-3 py-2.5 w-48 md:w-52 overflow-hidden`}
         >
           {/* Platform icon */}
           <div
@@ -173,9 +175,10 @@ function TransformationDemo() {
   return (
     <motion.div
       initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
       transition={{ delay: 0.3, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="flex items-center justify-center gap-4 md:gap-6"
+      className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-6"
     >
       <BeforeCard />
       <PipelineConnector />
@@ -262,8 +265,8 @@ export default function HeroSection() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff4d1c] opacity-60" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff4d1c]" />
           </span>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-[#ff4d1c]">
-            Free during beta — no account needed
+          <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-[#ff4d1c]">
+            Free Beta — No account needed
           </span>
         </motion.div>
 
@@ -283,8 +286,8 @@ export default function HeroSection() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               transition={{ duration: 0.75, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="block font-display font-extrabold text-[var(--text)] leading-[1.08] tracking-tighter"
-              style={{ fontSize: 'clamp(1.6rem, 4vw, 2.75rem)' }}
+              className="block font-display font-black text-[var(--text)] leading-[1.05] tracking-[-0.04em]"
+              style={{ fontSize: 'clamp(1.75rem, 8vw, 4.5rem)' }}
             >
               One photo.
             </motion.span>
@@ -296,8 +299,8 @@ export default function HeroSection() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="block font-display font-extrabold leading-[1.08] tracking-tighter"
-              style={{ fontSize: 'clamp(1.6rem, 4vw, 2.75rem)' }}
+              className="block font-display font-black leading-[1.05] tracking-[-0.04em]"
+              style={{ fontSize: 'clamp(1.75rem, 8vw, 4.5rem)' }}
             >
               A full{' '}<CyclingPlatformWord />{' '}pack.
             </motion.span>
@@ -309,8 +312,8 @@ export default function HeroSection() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               transition={{ duration: 0.75, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="block font-display font-extrabold text-[var(--text-secondary)] leading-[1.08] tracking-tighter"
-              style={{ fontSize: 'clamp(1.6rem, 4vw, 2.75rem)' }}
+              className="block font-display font-black text-[var(--text-secondary)] leading-[1.05] tracking-[-0.04em]"
+              style={{ fontSize: 'clamp(1.75rem, 8vw, 4.5rem)' }}
             >
               While your coffee brews.
             </motion.span>
@@ -322,10 +325,10 @@ export default function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.65, duration: 0.6 }}
-          className="text-center text-base md:text-lg text-[var(--text-secondary)] max-w-lg leading-relaxed"
+          className="text-center text-sm md:text-lg text-[var(--text-secondary)] max-w-md leading-relaxed"
         >
           Upload a product photo. PixPack builds 4 A/B-ready ad creatives,
-          platform-native copy, and a ZIP — ready to deploy.
+          platform-native copy, and a full testing kit.
         </motion.p>
 
         {/* 4 ── Transformation demo */}
