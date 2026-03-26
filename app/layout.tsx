@@ -94,7 +94,7 @@ export const metadata: Metadata = {
   ],
   metadataBase: new URL(siteConfig.url),
   alternates: {
-    canonical: 'https://saberlabs.dev',
+    canonical: '/',
   },
   robots: {
     index: true,

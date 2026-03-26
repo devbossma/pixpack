@@ -186,11 +186,14 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
       </div>
 
       {/* ──────────────────────────────────────────────────────────────────
-          DESKTOP  — 2×2 grid, cards keep their natural platform aspect ratio
+          DESKTOP  — grid, cards keep their natural platform aspect ratio
           The grid is scrollable vertically so cards never get squished.
       ────────────────────────────────────────────────────────────────── */}
-      <div className="hidden md:block flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar-hide">
-        <div className="grid grid-cols-2 gap-4 pb-4">
+      <div className="hidden md:block flex-1 min-h-0 overflow-y-auto pr-1 select-none">
+        <div className={[
+          'grid gap-6 pb-6',
+          resolvedPlatform === 'web_banner' ? 'grid-cols-1 max-w-4xl mx-auto' : 'grid-cols-1 lg:grid-cols-2'
+        ].join(' ')}>
           {sortedImages.map((img, idx) => (
             <div
               key={img.id}
