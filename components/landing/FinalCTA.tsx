@@ -15,7 +15,7 @@ export function FinalCTA() {
         className="absolute -bottom-8 -right-6 font-display font-extrabold select-none pointer-events-none
           text-[var(--text)] leading-none"
         style={{ fontSize: 'clamp(8rem,22vw,18rem)', opacity: 0.025 }}>
-        FREE
+        TEST
       </p>
 
       {/* Subtle glow */}
@@ -24,24 +24,24 @@ export function FinalCTA() {
           w-[600px] h-[400px] rounded-full
           bg-[radial-gradient(ellipse_at_center,rgba(255,77,28,0.09)_0%,transparent_70%)]" />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 py-20 w-full">
+      <div className="relative z-10 max-w-5xl mx-auto px-6 py-24 w-full">
         <motion.div
           initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}>
 
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--accent)] mb-6">
-            The clock is ticking
+            Stop guessing. Start testing.
           </p>
 
           <h2 className="font-display font-extrabold text-[var(--text)] leading-[1.0] tracking-tighter mb-8"
-            style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}>
-            Your next content pack<br />
-            is <span className="text-[var(--accent)]">60 seconds away.</span>
+            style={{ fontSize: 'clamp(1.8rem, 6vw, 3.5rem)' }}>
+            Your next A/B testing kit<br />
+            is <span className="text-[var(--accent)]">ready to launch.</span>
           </h2>
 
           <p className="text-lg text-[var(--text-secondary)] leading-relaxed mb-10 max-w-lg">
-            Stop paying agencies. Stop resizing images. Stop writing ad copy from scratch.
-            12,000+ merchants generate professional packs for free — while beta lasts.
+            Stop paying thousands for agencies. Stop writing ad copy from scratch. 
+            Generate your first 12-variant pack for free — while beta lasts.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
@@ -52,15 +52,15 @@ export function FinalCTA() {
                 hover:bg-[var(--accent-hover)] text-white font-display font-bold
                 text-xl px-12 py-5 rounded-2xl transition-all
                 shadow-[0_0_50px_rgba(255,77,28,0.25)] hover:shadow-[0_0_80px_rgba(255,77,28,0.4)]"
-              aria-label="Generate your free AI product content pack">
-              Generate my free pack
+              aria-label="Generate your free A/B testing pack">
+              Get my 12 variants free
               <ArrowUpRight size={22}
                 className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </motion.button>
 
             <div className="sm:pt-4 text-[11px] font-medium tracking-wide uppercase text-[var(--text-muted)] leading-relaxed">
-              No sign-up · No credit card<br />
-              Full ZIP download available
+              &lt; 3 mins wait time<br />
+              No sign-up · No credit card required
             </div>
           </div>
         </motion.div>

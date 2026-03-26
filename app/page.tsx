@@ -1,13 +1,40 @@
 import type { Metadata } from 'next'
 import { Topbar } from '@/components/layout/Topbar'
-import { HeroSection } from '@/components/landing/HeroSection'
+import { HeroSection } from '@/components/hero/HeroSection'
 import { HowItWorks } from '@/components/landing/HowItWorks'
 import { ValueSection } from '@/components/landing/ValueSection'
 import { PlatformsAndMarkets } from '@/components/landing/PlatformsAndMarkets'
 import { WhoIsItFor } from '@/components/landing/WhoIsItFor'
 import { FAQSection } from '@/components/landing/FAQSection'
 import { FinalCTA } from '@/components/landing/FinalCTA'
-import { siteConfig } from '@/lib/config'
+
+export const metadata: Metadata = {
+  title: 'PixPack — AI Product Ad Generator | One Photo → Full Ad Pack while your coffee brews',
+  description:
+    'Turn one supplier product photo into 4 A/B-ready ad creatives for Instagram, TikTok, Facebook, and Shopify — with localised copy — while your coffee brews. No studio, no agency.',
+  keywords: [
+    'AI product ad generator',
+    'product photo to ad creative',
+    'Instagram ad generator',
+    'TikTok ad generator',
+    'Shopify product image generator',
+    'ecommerce ad creatives',
+    'AI marketing tool',
+    'product image AI',
+  ],
+  openGraph: {
+    title: 'PixPack — AI Product Ad Generator',
+    description: 'One product photo → 12 platform-native ad variations while your coffee brews.',
+    url: 'https://pixpack.saberlabs.dev',
+    siteName: 'PixPack',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'PixPack — AI Product Ad Generator',
+    description: 'One product photo → 4 platform-native ad variations in 60 seconds.',
+  },
+}
 
 export default function LandingPage() {
   return (

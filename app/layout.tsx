@@ -35,15 +35,11 @@ export const viewport: Viewport = {
 // ─── Full Metadata ────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
   title: {
-    default: 'PixPack — AI Product Content Pack Generator',
+    default: 'PixPack — AI Product Ad Generator',
     template: '%s | PixPack',
   },
   description:
-    'Upload 1 product photo. Get 6 AI-generated, Ads-ready, platform-native images with captions — ' +
-    'sized for Instagram, TikTok, Facebook & Shopify. Culturally adapted for any market. Ready in 60 seconds.' +
-    'No studio. No designer. No watermark. No hidden fees. Just results.' +
-    'No credit card required.' +
-    'e-commerce content pack generator for merchants worldwide.',
+    'Turn one product photo into 4 A/B-ready ad creatives for Instagram, TikTok, Facebook, and Shopify — with 12 localised copy variations — while your coffee brews. No studio, no agency.',
   keywords: [
     'AI product image generator',
     'product photo generator',
@@ -101,8 +97,8 @@ export const metadata: Metadata = {
     url: siteConfig.url,
     siteName: 'PixPack',
     locale: 'en_US',
-    title: 'PixPack — Turn 1 Product Photo Into a Full e-commerce Content Pack',
-    description: '6 AI-generated, platform-native images + ad copy in 60 seconds. Culturally adapted for any market. No studio. No designer.',
+    title: 'PixPack — AI Product Ad Generator',
+    description: 'One product photo → 12 platform-native ad variations while your coffee brews. Culturally adapted for any market. No studio. No designer.',
     images: [{
       url: '/og-image.png',
       width: 1200,
@@ -115,8 +111,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: siteConfig.handle,
     creator: siteConfig.handle,
-    title: 'PixPack — Turn 1 Product Photo Into a Full Content Pack',
-    description: '6 AI-generated images + 18 ad variants + Shopify listing. 60 seconds.',
+    title: 'PixPack — AI Product Ad Generator',
+    description: 'One product photo → 12 platform-native ad variations while your coffee brews.',
     images: ['/og-image.png'],
   },
   applicationName: 'PixPack',
@@ -163,10 +159,9 @@ const jsonLd = {
         'AI product image generation',
         'Cultural audience targeting for 20+ global markets',
         'Platform-native sizing for Instagram, TikTok, Facebook, Shopify',
-        'AI-written localized ad copy — 3 variants per platform',
+        'AI-written localized ad copy — 12 variants per pack',
         'Shopify product listing generator',
-        'Posting schedule recommendations',
-        'ZIP download in under 60 seconds',
+        'Ready while your coffee brews',
       ],
       availableLanguage: [
         'English', 'French', 'Arabic', 'Portuguese',
@@ -217,7 +212,7 @@ const jsonLd = {
           name: 'How long does it take to generate a content pack?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack generates 6 platform-native images plus localized ad copy in under 60 seconds.',
+            text: 'PixPack generates 4 visual angles and 12 funnel-staged copy variations while your coffee brews (typically under 3 minutes).',
           },
         },
         {
