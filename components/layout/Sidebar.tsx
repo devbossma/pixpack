@@ -9,13 +9,24 @@ import { AGE_RANGES, GENDERS, INTERESTS, MARKETING_LANGUAGES } from '@/lib/confi
 import { Wand2, PanelLeftOpen, X, Globe, RefreshCw } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePipeline } from '@/hooks/usePipeline'
+import { useGenerationLimit } from '@/hooks/useGenerationLimit'
+import { GenerationLimitBadge } from '@/components/generation/GenerationLimitBadge'
+import { GenerateBar } from '@/components/generation/GenerateBar'
 import type { Platform } from '@/types'
 
 export function Sidebar() {
   const { config, setConfig } = useGenerationStore()
   const { pipelineStatus, isGenerateEnabled, runPipeline } = usePipeline()
+  const limit = useGenerationLimit()
   const [mobileOpen, setMobileOpen] = useState(false)
   const isGenerating = pipelineStatus !== 'idle' && pipelineStatus !== 'done'
+
+  async function handleGenerate() {
+    if (limit.limited) return
+    await runPipeline()
+    limit.decrementRemaining()
+    if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileOpen(false)
+  }
 
   // PREVIEW MODE: Hide the entire configuration UI when the pack is successfully generated.
   if (pipelineStatus === 'done') return null
@@ -26,11 +37,11 @@ export function Sidebar() {
       <SidebarSection label="Product photo">
         <UploadZone />
         <div className="mt-4">
-          <FieldLabel>Product Details &amp; Features (Optional)</FieldLabel>
+          <FieldLabel>Brand Personality &amp; Product Details (Optional)</FieldLabel>
           <textarea
             value={config.productHint || ''}
             onChange={(e) => setConfig({ productHint: e.target.value })}
-            placeholder="e.g., Waterproof smartwatch, genuine leather band, 24h battery life..."
+            placeholder="e.g., Bold and playful brand voice. Waterproof smartwatch, genuine leather band..."
             className="w-full h-20 bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)] transition-colors resize-none mb-1"
           />
         </div>
@@ -114,25 +125,18 @@ export function Sidebar() {
             </span>
           </motion.div>
         ) : (
-          <button
-            key="cta"
-            type="button"
-            onClick={() => { 
-                runPipeline()
-                if (typeof window !== 'undefined' && window.innerWidth < 768) setMobileOpen(false)
-            }}
-            disabled={!isGenerateEnabled}
-            className={[
-              'w-full flex items-center justify-center gap-2 font-bold text-sm py-3 rounded-xl transition-all',
-              isGenerateEnabled
-                ? 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white shadow-[0_0_20px_rgba(255,77,28,0.2)] hover:shadow-[0_0_28px_rgba(255,77,28,0.3)] active:scale-[0.98]'
-                : 'bg-[var(--surface2)] text-[var(--text-muted)] border border-[var(--border)] cursor-not-allowed',
-            ].join(' ')}
-            aria-label="Generate your pack"
-          >
-            <Wand2 size={14} />
-            Generate your pack
-          </button>
+          <div key="generation-cta" className="flex flex-col gap-2 w-full">
+            <GenerationLimitBadge
+              remaining={limit.remaining}
+              resetInMs={limit.resetInMs}
+              limited={limit.limited}
+              loading={limit.loading}
+            />
+            <GenerateBar
+              disabled={!isGenerateEnabled || limit.limited}
+              onGenerate={handleGenerate}
+            />
+          </div>
         )}
       </AnimatePresence>
 

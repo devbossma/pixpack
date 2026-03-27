@@ -22,10 +22,24 @@ import { NextRequest, NextResponse } from 'next/server'
 import { tasks } from '@trigger.dev/sdk/v3'
 import type { generatePackTask } from '@/trigger/generate-pack'
 import type { GenerateInput } from '@/lib/services/generate.service'
+import { checkGenerationLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 15  // Just needs to trigger the task — very fast
 
 export async function POST(request: NextRequest) {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+        ?? request.headers.get('x-real-ip')
+        ?? '127.0.0.1'
+
+    const limit = await checkGenerationLimit(ip)
+
+    if (!limit.allowed) {
+        console.log(`[generate] Rate limited: ${ip} — ${limit.reason}`)
+        return NextResponse.json(
+            { error: limit.reason, limited: true, resetInMs: limit.resetInMs },
+            { status: 429 },
+        )
+    }
     try {
         const body = await request.json()
         const { productProfile, userConfig, marketingLanguage = 'auto' } = body

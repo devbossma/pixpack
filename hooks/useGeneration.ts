@@ -171,6 +171,15 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         body: JSON.stringify(input),
       })
 
+      if (res.status === 429) {
+        const data = await res.json()
+        set({ generationState: {
+          status:  'error',
+          message: data.error ?? 'Daily generation limit reached. Try again tomorrow.',
+        }})
+        return
+      }
+
       if (!res.ok) {
         const data = await res.json()
         set({ generationState: { status: 'error', message: data.error ?? 'Failed to start generation' } })
