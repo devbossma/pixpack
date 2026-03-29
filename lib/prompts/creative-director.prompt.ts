@@ -45,7 +45,7 @@ const INTEREST_VISUAL_CONTEXT: Record<string, string> = {
 }
 
 const PLATFORM_FRAMING: Record<string, string> = {
-  instagram_post: 'Square 1:1. Clean rule of thirds. Premium social aesthetic.',
+  instagram_post: 'Portrait 3:4. Clean rule of thirds. Premium social aesthetic.',
   instagram_story: 'Vertical 9:16. Upper-half product focus. Candid energy.',
   tiktok: 'Vertical 9:16. Dynamic creator-native angle. Motion-suggested background.',
   facebook_post: '4:3. Approachable, trust-building, relatable lifestyle composition.',

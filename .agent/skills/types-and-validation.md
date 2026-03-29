@@ -144,7 +144,7 @@ export const DownloadRequestSchema = z.object({
 
 ```ts
 export const PLATFORM_SPECS = {
-  instagram_post:  { label: 'Instagram Post',   aspectRatio: '1:1',   width: 1080, height: 1080 },
+  instagram_post:  { label: 'Instagram Post',   aspectRatio: '3:4',   width: 1080, height: 1440 },
   instagram_story: { label: 'Instagram Story',  aspectRatio: '9:16',  width: 1080, height: 1920 },
   tiktok:          { label: 'TikTok',           aspectRatio: '9:16',  width: 1080, height: 1920 },
   facebook_post:   { label: 'Facebook Post',    aspectRatio: '4:3',   width: 1200, height: 900  },
