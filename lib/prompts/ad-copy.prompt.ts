@@ -174,6 +174,12 @@ You don't just write ads that stop the scroll — you write ads that make people
 
 PRODUCT INFO:
 ${JSON.stringify(productProfile, null, 2)}
+${productProfile.productHint ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ MERCHANT'S OWN WORDS — HIGHEST PRIORITY:
+"${productProfile.productHint}"
+Use this as ground truth for copy claims. If the merchant says something is handmade or has a specific material, your copy MUST reflect it.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` : ''}
 
 PLATFORM TARGET: ${platform}
 AUDIENCE SEGMENT: ${audienceContext || 'Global Social Media Users'}

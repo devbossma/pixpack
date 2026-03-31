@@ -240,6 +240,19 @@ function deriveProductContext(productProfile: ProductProfile): ProductContext {
     }
   }
 
+  // Handmade / artisan / craft products
+  if (/\b(handmade|hand.?made|handcrafted|hand.?crafted|artisan|artisanal|bespoke|custom.?made|made.?to.?order|small.?batch|hand.?sewn|hand.?woven|hand.?knit|hand.?painted|hand.?carved|hand.?tooled|hand.?dyed|macram[eé]|crochet|embroidery|pottery|ceramics|stoneware|woodworking|leather.?work|felt|weaving|loom|natural.?dye|organic.?cotton|raw.?wood|reclaimed)\b/.test(combined)) {
+    return {
+      category: 'handmade',
+      usageContext: 'A person who appreciates artisan craftsmanship, slow design, and one-of-a-kind objects. They value the story and the maker behind the item.',
+      humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: show hands holding or examining the piece — fingertips touching texture, the handmade quality visible on close inspection. A half-finished piece of the same craft nearby adds authenticity.',
+      forbiddenEnvironments: 'corporate offices, sterile white studios with no texture, industrial environments, tech workspaces, gym settings',
+      lifestyle_setting: 'a craft workshop surface with natural light, a bohemian living room rug, a rustic wooden farm table, a sun-drenched windowsill with linen curtains',
+      context_setting: 'a handmade-goods market stall, a ceramics studio shelf with works-in-progress, a naturally lit craft room with raffia baskets and dried botanicals, a cottage kitchen with exposed brick',
+      social_proof_surface: 'a rough-hewn wooden table, a folded linen cloth, a wicker tray, a stone hearth ledge, a patchwork quilt surface',
+    }
+  }
+
   // Default fallback
   return {
     category: 'general',
@@ -289,10 +302,19 @@ export function buildCreativeDirectorPrompt(
   // ── Product-category context ──────────────────────────────────────────────────
   const productCtx = deriveProductContext(productProfile)
 
+  const productHintSection = productProfile.productHint
+    ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ MERCHANT'S OWN DESCRIPTION — HIGHEST PRIORITY:
+"${productProfile.productHint}"
+This is the merchant speaking directly. Trust this over visual inference. If the merchant says "handmade wool macramé", treat it as handmade wool macramé — not generic home décor.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+    : ''
+
   return `
 You are a Senior Creative Director AND Marketing Strategist at a world-class Digital Ad Agency.
 Task: (1) Determine the emotional purchase strategy for this product + audience. (2) Write 4 scene descriptions that each sell a different emotional layer of that strategy.
-
+${productHintSection}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCT ANALYSIS:
 ${JSON.stringify(productProfile, null, 2)}

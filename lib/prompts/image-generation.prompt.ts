@@ -148,6 +148,7 @@ export function buildImageGenerationPrompt(
   scene: Scene,
   aspectRatio: string,
   userConfig?: UserConfig,
+  productHint?: string,
 ): string {
   const platform = userConfig?.platform ?? 'instagram_post'
   const qualityDirective = PLATFORM_QUALITY_DIRECTIVES[platform] ?? 'Professional product photography.'
@@ -168,6 +169,15 @@ export function buildImageGenerationPrompt(
   })
   const marketProhibitions = getMarketProhibitions(userConfig?.country)
 
+  const productHintBlock = productHint
+    ? `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ MERCHANT'S PRODUCT DESCRIPTION — READ BEFORE PLACING THE PRODUCT:
+"${productHint}"
+Use this as the authoritative description of the object in the reference image. If the merchant describes it as "handmade" or "artisanal", the generated scene MUST reflect a handmade aesthetic. Do NOT default to a generic product category.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+    : ''
+
   return `
 You are a world-class commercial product photographer and CGI compositor.
 Task: create a single photorealistic product photograph for ${platform}.
@@ -181,6 +191,7 @@ DO NOT reproduce the word "Photoroom" anywhere in your output image.
 DO NOT use the diagonal "Photoroom" text pattern as a background texture or fill.
 The product itself is clean. Treat the reference as a pristine studio cutout with no watermark.
 ${verticalWarning}
+${productHintBlock}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCENE TO CREATE:
 ${scene.image_prompt}
