@@ -27,7 +27,7 @@ import { buildImageGenerationPrompt } from '../prompts/image-generation.prompt'
 import type {
   CreativeJson, SceneLayout, Scene, AdCopies,
   GeneratedImage, GeneratedPack,
-  UserConfig, ProductProfile,
+  UserConfig, ProductProfile, StrategyOutput,
 } from '../types'
 import { isRateLimitError } from '../concurrency'
 
@@ -97,7 +97,8 @@ export async function generatePack(
     onStage?.(1, 'Building 4 creative concepts...')
 
     const creativeJson = await runCreativeDirector(ai, productProfile, userConfig)
-    console.log(`[generate] Stage 1 done — ${creativeJson.variations.length} variations`)
+    const archetypeLog = creativeJson.strategy?.emotional_archetypes?.join('→') ?? 'none'
+    console.log(`[generate] Stage 1 done — ${creativeJson.variations.length} variations | archetypes: ${archetypeLog}`)
 
     // ── Stage 2: Ad copy for all 4 variations ─────────────────────────────────
     console.log('[generate] Stage 2: generating ad copy...')
@@ -105,7 +106,7 @@ export async function generatePack(
 
     try {
       scenesWithCopy = await generateAdCopy(
-        ai, creativeJson.variations, productProfile, userConfig, language
+        ai, creativeJson.variations, productProfile, userConfig, language, creativeJson.strategy
       )
     } catch (err) {
       console.warn('[stage2] Ad copy failed. Using emergency fallbacks.', (err as Error).message)
@@ -264,8 +265,9 @@ async function generateAdCopy(
   productProfile: ProductProfile,
   userConfig: UserConfig,
   language: string,
+  strategy?: StrategyOutput,
 ): Promise<Scene[]> {
-  const prompt = buildAdCopyPrompt({ productProfile, userConfig, variations, language })
+  const prompt = buildAdCopyPrompt({ productProfile, userConfig, variations, language, strategy })
 
   return retryOnRateLimit(
     async () => {

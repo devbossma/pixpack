@@ -290,8 +290,8 @@ export function buildCreativeDirectorPrompt(
   const productCtx = deriveProductContext(productProfile)
 
   return `
-You are a Senior Creative Director at a world-class Digital Ad Agency.
-Task: Write 4 COMPLETELY DISTINCT scene descriptions for A/B testing this product in paid ads.
+You are a Senior Creative Director AND Marketing Strategist at a world-class Digital Ad Agency.
+Task: (1) Determine the emotional purchase strategy for this product + audience. (2) Write 4 scene descriptions that each sell a different emotional layer of that strategy.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCT ANALYSIS:
@@ -315,6 +315,38 @@ ${safetyRules ? `━━━━━━━━━━━━━━━━━━━━━
 CULTURAL & COMPLIANCE RULES — YOU MUST FOLLOW THESE:
 ${safetyRules}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — EMOTIONAL STRATEGY (think this through FIRST):
+
+"A seller sells features. A good seller sells outcomes. A genius seller sells feelings."
+
+Your first task, before writing any scenes, is to determine the EMOTIONAL PURCHASE DRIVER for this product + audience combination.
+
+Choose the TOP 3 Emotional Archetypes from this list that will resonate most strongly:
+  - Security: Buyer wants to remove risk, fear, and uncertainty. They want to protect something important.
+  - Belonging: Buyer wants to be part of a group, community, or identity. They want to feel accepted.
+  - Status: Buyer wants to feel elevated, admired, or above average. They want others to notice.
+  - Freedom: Buyer wants to remove a constraint in their life. They want time, independence, or relief.
+  - Curiosity: Buyer is drawn by discovery, novelty, or "what happens if...". They want to explore.
+
+Select the 3 archetypes in ORDER of resonance for this specific product + audience combination.
+Provide a 1-sentence strategic reasoning for your selection.
+Define a tone guide (3 adjectives, e.g. "Warm, Direct, Aspirational").
+
+CRITICAL: After determining the strategy, EACH of the 4 scene image_prompts MUST visually embody one of these archetypes:
+  - Variation 1 (LIFESTYLE) — embodies your PRIMARY archetype
+  - Variation 2 (HERO) — embodies your SECONDARY archetype
+  - Variation 3 (CONTEXT) — embodies your SECONDARY archetype through world-building
+  - Variation 4 (SOCIAL PROOF) — embodies your TERTIARY archetype (trust, community, authenticity)
+
+How archetypes translate to VISUAL SCENES:
+  - Security → The product is being actively used in a safe, controlled, comforting context. Props signal reliability.
+  - Belonging → A person or group is visible, sharing or enjoying the product together. Warm communal light.
+  - Status → High-contrast studio, curated luxury props, minimal distraction — the product IS the status symbol.
+  - Freedom → Open space, natural light, candid motion — the scene shows life after the constraint is removed.
+  - Curiosity → An unexpected or surprising scene element. Something slightly off-center that makes the viewer lean in.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATIVE SEEDS — MANDATORY CONSTRAINTS:
@@ -381,7 +413,7 @@ SCENE DESCRIPTION RULES — NON-NEGOTIABLE:
 7. OUTPUT LANGUAGE: Scene descriptions must be in English regardless of target market.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FOUR VARIATION BRIEFS:
+STEP 2 — FOUR VARIATION BRIEFS (use your strategy to drive each one):
 
 VARIATION 1 — LIFESTYLE (Story-in-Progress):
 A candid real-life scene. The product is BEING USED or is mid-moment in someone's day.
@@ -405,8 +437,9 @@ Setting: ${productCtx.context_setting}
 Describe 3+ specific named environmental props that build the world.
 The product is part of the scene, not dropped into it.
 
-VARIATION 4 — SOCIAL PROOF (Authentic UGC):
+VARIATION 4 — SOCIAL PROOF (Authentic UGC — TERTIARY ARCHETYPE):
 Looks like a real customer's organic post — not a brand shoot.
+Embody your TERTIARY archetype visually: if it's Belonging, show community warmth. If Security, show relief and satisfaction. If Curiosity, show a surprising discovery moment.
 Use seed: ${time4} light · ${palette4} palette · ${productCtx.social_proof_surface} surface.
 A hand, packaging, or receipt should be naturally visible in frame.
 The product is fully visible, sitting firmly on the surface in a real domestic environment.
@@ -418,26 +451,31 @@ Return ONLY valid JSON. No markdown. No code fences. Start directly with {
 
 {
   "platform": "${platform}",
+  "strategy": {
+    "emotional_archetypes": ["<primary archetype>", "<secondary archetype>", "<tertiary archetype>"],
+    "reasoning": "<1-sentence explanation of why these 3 archetypes resonate with this product + audience combination>",
+    "tone_guide": "<3 adjectives that define the emotional register, e.g. 'Warm, Aspirational, Direct'>"
+  },
   "variations": [
     {
       "variation": 1,
       "angle": "lifestyle",
-      "image_prompt": "<4 sentences: (1) exact surface material from seed · (2) human/animal element doing something specific · (3) 2-3 named props establishing the environment · (4) background wall/window/atmosphere with specific light direction and color temperature. No product name.>"
+      "image_prompt": "<4 sentences: (1) exact surface material from seed · (2) human/animal element embodying the PRIMARY archetype visually · (3) 2-3 named props establishing the emotional environment · (4) background with specific light direction and color temperature. No product name.>"
     },
     {
       "variation": 2,
       "angle": "hero",
-      "image_prompt": "<3 sentences: (1) exact surface material from seed, product centered and pressing firmly onto it with a contact shadow · (2) single-source lighting direction and quality matching the time-of-day seed · (3) background is exactly ${heroBg} — seamless, no texture, no pattern. No product name.>"
+      "image_prompt": "<3 sentences: (1) exact surface material from seed, product centered pressing firmly onto it with a contact shadow · (2) lighting that visually embodies the SECONDARY archetype · (3) background is exactly ${heroBg} — seamless, no texture, no pattern. No product name.>"
     },
     {
       "variation": 3,
       "angle": "context",
-      "image_prompt": "<4 sentences: (1) exact surface material · (2) at least 3 specifically named environmental props that build the aspirational world · (3) background wall/window with exact material and color · (4) light quality and direction. No person. No product name.>"
+      "image_prompt": "<4 sentences: (1) exact surface material · (2) at least 3 specifically named environmental props that build the world the SECONDARY archetype lives in · (3) background wall/window with exact material and color · (4) light quality and direction. No person. No product name.>"
     },
     {
       "variation": 4,
       "angle": "social_proof",
-      "image_prompt": "<4 sentences: (1) domestic surface from seed, product fully visible pressing onto it · (2) hand or packaging casually visible, implying real first-use moment · (3) personal items in frame that feel organic (phone, receipt, mug) · (4) background blurred domestic interior with specific light source. No product name.>"
+      "image_prompt": "<4 sentences: (1) domestic surface from seed, product fully visible pressing onto it · (2) hand or packaging casually visible, embodying TERTIARY archetype feeling · (3) personal items in frame that feel organic (phone, receipt, mug) · (4) background blurred domestic interior with specific light direction. No product name.>"
     }
   ],
   "posting_schedule": {

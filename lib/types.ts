@@ -68,10 +68,23 @@ export interface Scene extends SceneLayout {
   ad_copies: AdCopies
 }
 
+// ─── Strategy output (embedded in Stage 1) ───────────────────────────────────
+
+// The 5 universal emotional archetypes used in marketing strategy.
+// A genius seller sells feelings — not features, not outcomes.
+export type EmotionalArchetype = 'Security' | 'Belonging' | 'Status' | 'Freedom' | 'Curiosity'
+
+export interface StrategyOutput {
+  emotional_archetypes: EmotionalArchetype[]  // top 3, ordered by resonance
+  reasoning: string                           // 1-sentence rationale
+  tone_guide: string                          // e.g. "Warm, Aspirational, Direct"
+}
+
 // ─── Creative Director output (Stage 1) ──────────────────────────────────────
 
 export interface CreativeJson {
   platform: string
+  strategy?: StrategyOutput  // present when Creative Director v5+ prompt is used
   variations: SceneLayout[]  // exactly 4, one per A/B test variation
   posting_schedule: {
     best_day: string
