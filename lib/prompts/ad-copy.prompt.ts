@@ -62,7 +62,7 @@ const VARIATION_COPY_ANGLE: Record<string, string> = {
     lifestyle: 'Story-led & Emotional. Focus on the identity shift. "Who do I become when I use this?" Use warm, personal language. Candid "day-in-the-life" feel.',
     hero: 'Authority & Performance. Lead with technical superiority. "Why is this better than the rest?" Use numbers, specs, and performance claims. Direct and confident.',
     context: 'Desire & Aspiration. Paint the world the product belongs to. Focus on status, aesthetics, and "The Good Life". High-end, sophisticated energy.',
-    closeup: 'Quality & Tactile. Focus on the raw materials and the feel. Use sensory language (smooth, rugged, weight, texture). Zero fluff.',
+    social_proof: 'Trust & Authenticity. Write as if a real customer is recommending the product to a friend. Use first-person enthusiasm, mention the unboxing moment or first impression. Social proof energy — "I ordered this and..." or "Not sponsored, genuinely obsessed".',
 }
 
 export interface AdCopyInput {

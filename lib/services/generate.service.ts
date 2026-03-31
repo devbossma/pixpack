@@ -229,7 +229,7 @@ async function runCreativeDirector(
         contents: prompt,
         config: {
           responseMimeType: 'application/json',
-          temperature: 0.7,
+          temperature: 1.0,  // High temperature: entropy seeds in prompt keep it grounded, but we need creative range
           topP: 0.95,
           maxOutputTokens: 4096,
         },

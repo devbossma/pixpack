@@ -94,17 +94,17 @@ ASPIRATIONAL CONTEXT PLACEMENT:
 - Product receives the scene's natural light — direction, color temperature, intensity match.
 `,
 
-  closeup: `
-MACRO CLOSEUP — READ CAREFULLY:
-- This is an EXTREME MACRO shot. Do NOT show the full product.
-- FILL 90% OF THE FRAME with ONE specific surface detail of the product:
-  the material texture, the stitching, the matte coating, the metal finish,
-  the grain of the fabric, the edge of a control, the brushed or polished surface.
-- The rest of the product bleeds out of frame — this is intentional and correct.
-- Background: extreme bokeh — a smooth, single-color wash.
-  Choose one: warm amber, cool grey, soft cream, muted sage. NOT text. NOT a pattern.
-- Lighting: one directional source revealing micro-texture. Very shallow DOF (f/1.2).
-- This image should feel like a luxury materials campaign, not a product photo.
+  social_proof: `
+SOCIAL PROOF / UGC PLACEMENT:
+- This is an AUTHENTIC first-use or unboxing moment. It must look real, not staged.
+- The FULL product is clearly visible and in frame — minimum 40% frame coverage.
+- A hand rests beside or partially holds the product from the edge of frame, or packaging (paper bag, box) is visible nearby.
+- Personal items (coffee cup, phone, keys) are casually placed in the scene — not artfully arranged, organically positioned.
+- Surface: a real domestic surface — bed linen, bathroom shelf, kitchen counter, wooden desk.
+- Lighting: soft natural window light only. No softboxes, no ring lights, no studio flash.
+  Warm morning or afternoon indoor ambient light. Slight natural skin-tone warmth on surfaces.
+- Background: real domestic interior, slightly out of focus — blurred apartment wall, sheer curtained window, bookshelf. NOT a seamless gradient.
+- Mood: This should feel like a frame from someone’s Instagram Stories, not a commercial shoot.
 `,
 }
 
@@ -157,10 +157,8 @@ export function buildImageGenerationPrompt(
     ? '\nFORMAT: ONE SINGLE CONTINUOUS PHOTOGRAPH. NOT a collage. NOT split panels. NOT a grid.\n'
     : ''
 
-  // Closeup intentionally crops the product — do NOT apply the full-product rule
-  const fullProductRule = scene.angle === 'closeup'
-    ? '4. MACRO ONLY: Do NOT show the full product. ONE surface detail fills 90%+ of frame. The rest bleeds out of frame.'
-    : '4. FULL PRODUCT IN FRAME: Do not crop any part of the product. Full product visible. Minimum 40% frame coverage.'
+  // All angles require the full product in frame (social_proof replaced closeup macro)
+  const fullProductRule = '4. FULL PRODUCT IN FRAME: Do not crop any part of the product. Full product visible. Minimum 40% frame coverage.'
 
   // Cultural safety rules — market + category + platform compliance
   const safetyRules = getSafetyRules({
