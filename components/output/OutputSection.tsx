@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { PackSummary } from './PackSummary'
 import { OutputGrid } from './OutputGrid'
 import { ActionBar } from './ActionBar'
-import { Wand2, LayoutGrid } from 'lucide-react'
+import { LayoutGrid } from 'lucide-react'
 import type { GeneratedPack, GeneratedImage } from '@/types'
 import { useGenerationStore, selectIsGenerating } from '@/hooks/useGeneration'
 import { usePipeline } from '@/hooks/usePipeline'
@@ -31,7 +31,7 @@ export function OutputSection({ pack }: OutputSectionProps) {
   )) {
     return (
       <div className="flex-1 flex flex-col justify-center items-center p-8 bg-[var(--output-bg)]">
-        <div className="max-w-md w-full">
+        <div className="max-w-lg w-full">
           <LoadingSequence state={generationState} />
         </div>
       </div>
@@ -48,15 +48,85 @@ export function OutputSection({ pack }: OutputSectionProps) {
 
   const hasContent = displayImages.length > 0 || isGenerating
 
-  // ── Empty state ─────────────────────────────────────────────────────────────
+  // ── Empty state ──────────────────────────────────────────────────────
   if (!hasContent) return (
-    <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-8 text-[var(--text-muted)] h-full">
-      <div className="w-12 h-12 rounded-2xl border border-[var(--border)] bg-[var(--surface)] flex items-center justify-center">
-        <Wand2 size={20} className="text-[var(--text-muted)]" />
+    <div className="flex-1 flex flex-col items-center justify-center gap-8 text-center p-8 h-full">
+      {/* Headline */}
+      <div className="space-y-2">
+        <h2 className="text-xl font-black tracking-tight text-[var(--text)]">
+          Your ad pack appears here
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] max-w-sm leading-relaxed">
+          3 steps. 90 seconds. 4 ready-to-test ad variations.
+        </p>
       </div>
-      <p className="text-sm font-medium text-[var(--text-secondary)]">Your ad pack appears here</p>
-      <p className="text-xs max-w-xs leading-relaxed opacity-70">
-        Upload a photo, pick a platform &amp; audience — then click &ldquo;Generate your pack&rdquo; in the sidebar
+
+      {/* 3-step flow diagram */}
+      <div className="hidden md:flex items-center gap-4">
+        {[
+          { num: '1', title: 'Upload photo', sub: 'Any product image', color: 'var(--accent)' },
+          { num: '2', title: 'Pick audience', sub: 'Market, age, interest', color: 'var(--accent2)' },
+          { num: '3', title: 'Choose platform', sub: 'Instagram, TikTok...', color: 'var(--accent3)' },
+        ].map((step, i) => (
+          <React.Fragment key={step.num}>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.12 }}
+              className="flex flex-col items-center gap-2 w-36"
+            >
+              <div
+                className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black text-white shadow-lg"
+                style={{
+                  background: `linear-gradient(135deg, ${step.color}cc, ${step.color}66)`,
+                  boxShadow: `0 4px 20px ${step.color}33`,
+                  border: `1px solid ${step.color}40`,
+                }}
+              >
+                {step.num}
+              </div>
+              <p className="text-xs font-bold text-[var(--text)]">{step.title}</p>
+              <p className="text-[10px] text-[var(--text-muted)] leading-snug">{step.sub}</p>
+            </motion.div>
+            {i < 2 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.12 + 0.06 }}
+                className="text-[var(--border)] text-xl font-thin flex-shrink-0"
+              >
+                →
+              </motion.div>
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Result preview */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.4 }}
+        className="hidden md:flex flex-col items-center gap-2"
+      >
+        <div className="flex gap-2">
+          {['Lifestyle', 'Hero', 'Context', 'Social'].map((label, i) => (
+            <div
+              key={label}
+              className="w-16 h-16 rounded-xl border border-[var(--border)] bg-[var(--surface)] flex flex-col items-center justify-center gap-1"
+              style={{ opacity: 0.4 + i * 0.1 }}
+            >
+              <div className="w-8 h-8 rounded-lg bg-[var(--surface2)] border border-[var(--border)]" />
+              <span className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{label}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-[var(--text-muted)]">4 A/B variations for your chosen platform</p>
+      </motion.div>
+
+      {/* Mobile simple hint */}
+      <p className="md:hidden text-xs text-[var(--text-muted)] max-w-xs">
+        Tap “Configure” below to upload your product photo and get started.
       </p>
     </div>
   )
@@ -75,18 +145,28 @@ export function OutputSection({ pack }: OutputSectionProps) {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="hidden md:flex items-center justify-between flex-shrink-0 px-6 py-3 border-b border-[var(--output-border)] bg-[var(--output-bg)]"
+          className="hidden md:flex items-center justify-between flex-shrink-0 px-6 py-2.5 border-b border-[var(--output-border)] bg-[var(--output-bg)]"
         >
-          {/* Left: branding + pack info */}
+          {/* Left: pack identity */}
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center">
-              <LayoutGrid size={14} className="text-white" />
+            <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
+              <LayoutGrid size={13} className="text-white" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-[var(--accent)]">Preview Mode</p>
-              <p className="text-[11px] text-[var(--text-muted)]">
-                {pack.images.filter(i => i.status === 'done').length} variations · {pack.platform.replace('_', ' ')}
+              <p className="text-xs font-black uppercase tracking-widest text-[var(--accent)] leading-none">Ad Pack Ready</p>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 capitalize">
+                {pack.platform.replace(/_/g, ' ')}
               </p>
+            </div>
+
+            {/* Stats pills */}
+            <div className="flex items-center gap-1.5 ml-3">
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent3-dim)] text-[var(--accent3)] border border-[var(--accent3)]/20">
+                {pack.images.filter(i => i.status === 'done').length} variations
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--accent-info-dim)] text-[var(--accent-info)] border border-[var(--accent-info)]/20">
+                3 copy sets each
+              </span>
             </div>
           </div>
 

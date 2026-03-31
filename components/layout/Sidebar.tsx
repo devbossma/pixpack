@@ -6,7 +6,7 @@ import { CountrySelector } from '@/components/audience/CountrySelector'
 import { PillSelector } from '@/components/ui/PillSelector'
 import { PlatformSelector } from '@/components/platforms/PlatformSelector'
 import { AGE_RANGES, GENDERS, INTERESTS, MARKETING_LANGUAGES } from '@/lib/config'
-import { Wand2, PanelLeftOpen, X, Globe, RefreshCw } from 'lucide-react'
+import { Wand2, PanelLeftOpen, X, Globe, Users, Monitor, Camera } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePipeline } from '@/hooks/usePipeline'
 import { useGenerationLimit } from '@/hooks/useGenerationLimit'
@@ -16,6 +16,7 @@ import type { Platform } from '@/types'
 
 export function Sidebar() {
   const { config, setConfig } = useGenerationStore()
+  const uploadState = useGenerationStore(s => s.uploadState)
   const { pipelineStatus, isGenerateEnabled, runPipeline } = usePipeline()
   const limit = useGenerationLimit()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -31,24 +32,26 @@ export function Sidebar() {
   // PREVIEW MODE: Hide the entire configuration UI when the pack is successfully generated.
   if (pipelineStatus === 'done') return null
 
+  const uploadReady = uploadState?.status === 'ready'
+
   const mainContent = (
     <>
-      {/* Product photo */}
-      <SidebarSection label="Product photo">
+      {/* Step 1: Product photo */}
+      <SidebarSection step={1} label="Product photo" icon={<Camera size={11} />}>
         <UploadZone />
-        <div className="mt-4">
-          <FieldLabel>Brand Personality &amp; Product Details (Optional)</FieldLabel>
+        <div className="mt-3">
+          <FieldLabel>Brand & Product hint <span className="text-[var(--text-muted)] font-normal">(optional)</span></FieldLabel>
           <textarea
             value={config.productHint || ''}
             onChange={(e) => setConfig({ productHint: e.target.value })}
-            placeholder="e.g., Bold and playful brand voice. Waterproof smartwatch, genuine leather band..."
-            className="w-full h-20 bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)] transition-colors resize-none mb-1"
+            placeholder="e.g., Handmade macramé bag, natural cotton. Bold playful brand voice..."
+            className="w-full h-16 bg-[var(--surface2)] border border-[var(--border)] rounded-xl p-3 text-xs text-[var(--text)] placeholder:text-[var(--text-muted)] outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/20 transition-all resize-none mb-1"
           />
         </div>
       </SidebarSection>
 
-      {/* Audience */}
-      <SidebarSection label="Target audience">
+      {/* Step 2: Audience */}
+      <SidebarSection step={2} label="Target audience" icon={<Users size={11} />}>
         <div className="space-y-3">
           <div>
             <FieldLabel>Market</FieldLabel>
@@ -98,8 +101,8 @@ export function Sidebar() {
         </div>
       </SidebarSection>
 
-      {/* Platform */}
-      <SidebarSection label="Platform" noBorder>
+      {/* Step 3: Platform */}
+      <SidebarSection step={3} label="Ad platform" icon={<Monitor size={11} />} noBorder>
         <PlatformSelector
           value={config.platform}
           onChange={(v: string) => setConfig({ platform: v as Platform })}
@@ -161,7 +164,7 @@ export function Sidebar() {
       </button>
 
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden md:flex w-72 flex-shrink-0 border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] flex-col z-10">
+      <aside className="hidden md:flex w-72 lg:w-80 xl:w-80 flex-shrink-0 border-r border-[var(--sidebar-border)] bg-[var(--sidebar-bg)] flex-col z-10">
         <div className="flex-1 overflow-y-auto">
           {mainContent}
         </div>
@@ -209,15 +212,25 @@ export function Sidebar() {
   )
 }
 
-function SidebarSection({ label, children, noBorder }: {
+function SidebarSection({ step, label, icon, children, noBorder }: {
+  step?: number
   label: string
+  icon?: React.ReactNode
   children: React.ReactNode
   noBorder?: boolean
 }) {
   return (
-    <div className={`p-3 ${!noBorder ? 'border-b border-[var(--sidebar-border)]' : ''}`}>
-      <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)] mb-2.5">
-        {label}
+    <div className={`p-4 ${!noBorder ? 'border-b border-[var(--sidebar-border)]' : ''}`}>
+      <div className="flex items-center gap-2 mb-3">
+        {step && (
+          <span className="w-4 h-4 rounded-full bg-[var(--accent)]/15 border border-[var(--accent)]/30 text-[var(--accent)] text-[9px] font-black flex items-center justify-center flex-shrink-0">
+            {step}
+          </span>
+        )}
+        {icon && <span className="text-[var(--text-muted)]">{icon}</span>}
+        <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
+          {label}
+        </span>
       </div>
       {children}
     </div>
@@ -225,5 +238,5 @@ function SidebarSection({ label, children, noBorder }: {
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <span className="block text-xs text-[var(--text-secondary)] mb-1.5">{children}</span>
+  return <span className="block text-[11px] text-[var(--text-secondary)] mb-1.5 font-medium">{children}</span>
 }
