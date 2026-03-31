@@ -96,7 +96,7 @@ export async function generatePack(
     console.log(`[generate] Stage 1: Creative Director for ${platform}...`)
     onStage?.(1, 'Building 4 creative concepts...')
 
-    const creativeJson = await runCreativeDirector(ai, productProfile, userConfig, language)
+    const creativeJson = await runCreativeDirector(ai, productProfile, userConfig)
     console.log(`[generate] Stage 1 done — ${creativeJson.variations.length} variations`)
 
     // ── Stage 2: Ad copy for all 4 variations ─────────────────────────────────
@@ -219,9 +219,8 @@ async function runCreativeDirector(
   ai: ReturnType<typeof createVertexClient>,
   productProfile: ProductProfile,
   userConfig: UserConfig,
-  language: string,
 ): Promise<CreativeJson> {
-  const prompt = buildCreativeDirectorPrompt(productProfile, userConfig, language)
+  const prompt = buildCreativeDirectorPrompt(productProfile, userConfig)
 
   return retryOnRateLimit(
     async () => {

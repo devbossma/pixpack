@@ -15,6 +15,7 @@
  */
 
 import type { ProductProfile, UserConfig } from '../types'
+import { getSafetyRules } from './cultural-safety.rules'
 
 // ─── Audience visual context ───────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ const INTEREST_VISUAL_CONTEXT: Record<string, string> = {
 }
 
 const PLATFORM_FRAMING: Record<string, string> = {
-  instagram_post: 'Portrait 3:4. Clean rule of thirds. Premium social aesthetic.',
+  instagram_post: 'Square 1:1. Clean rule of thirds. Premium social aesthetic.',
   instagram_story: 'Vertical 9:16. Upper-half product focus. Candid energy.',
   tiktok: 'Vertical 9:16. Dynamic creator-native angle. Motion-suggested background.',
   facebook_post: '4:3. Approachable, trust-building, relatable lifestyle composition.',
@@ -106,7 +107,6 @@ Mood: Material desire. Every tactile detail is visible and inviting.`,
 export function buildCreativeDirectorPrompt(
   productProfile: ProductProfile,
   userConfig: UserConfig,
-  language: string,
 ): string {
   const platform = userConfig.platform ?? 'instagram_post'
   const ageVisual = userConfig.ageRange ? AGE_VISUAL_CONTEXT[userConfig.ageRange] ?? '' : ''
@@ -120,6 +120,12 @@ export function buildCreativeDirectorPrompt(
     userConfig.country && `Market: ${userConfig.country}`,
     userConfig.interest && `Interest: ${userConfig.interest}`,
   ].filter(Boolean).join(' · ')
+
+  const safetyRules = getSafetyRules({
+    country: userConfig?.country,
+    interest: userConfig?.interest,
+    platform,
+  })
 
   return `
 You are a Senior Creative Director at a top-tier Digital Ad Agency.
@@ -135,6 +141,13 @@ ${[ageVisual, genderVisual, interestVis].filter(Boolean).join('\n')}
 
 PLATFORM: ${platform}
 FRAMING GUIDE: ${platformFrame}
+
+${safetyRules ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CULTURAL & COMPLIANCE RULES — YOU MUST FOLLOW THESE:
+${safetyRules}
+These rules govern what is allowed in your scene descriptions.
+A scene that violates these rules will be rejected. Write scenes that respect them completely.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCENE DESCRIPTION RULES — READ CAREFULLY:

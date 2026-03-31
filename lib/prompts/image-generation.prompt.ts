@@ -21,6 +21,7 @@
  */
 
 import type { Scene, UserConfig } from '../types'
+import { getSafetyRules, getMarketProhibitions } from './cultural-safety.rules'
 
 // ─── Platform camera & quality directives ─────────────────────────────────────
 
@@ -161,31 +162,43 @@ export function buildImageGenerationPrompt(
     ? '4. MACRO ONLY: Do NOT show the full product. ONE surface detail fills 90%+ of frame. The rest bleeds out of frame.'
     : '4. FULL PRODUCT IN FRAME: Do not crop any part of the product. Full product visible. Minimum 40% frame coverage.'
 
-  return `
-⚠️ YOUR RESPONSE MUST BE A PHOTOGRAPH — NO TEXT, NO EXPLANATION, NO REFUSAL. OUTPUT: IMAGE ONLY.
+  // Cultural safety rules — market + category + platform compliance
+  const safetyRules = getSafetyRules({
+    country: userConfig?.country,
+    interest: userConfig?.interest,
+    platform,
+  })
+  const marketProhibitions = getMarketProhibitions(userConfig?.country)
 
+  return `
 You are a world-class commercial product photographer and CGI compositor.
-Generate a single photorealistic product advertisement photograph for ${platform}.
+Task: create a single photorealistic product photograph for ${platform}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REFERENCE IMAGE — CRITICAL INSTRUCTION:
-The attached image shows the product with its background removed by Photoroom.
-It contains a diagonal tiled watermark reading "Photoroom" — this is NOT part of the product.
-DO NOT reproduce the word "Photoroom" anywhere in your output.
-DO NOT use the diagonal text pattern as a background or fill.
-Treat the product as a clean, pristine studio cutout.
+The attached image shows a product with its background removed by a tool called Photoroom.
+The image contains a tiled repeating diagonal watermark that reads "Photoroom" across it.
+THIS WATERMARK IS NOT PART OF THE PRODUCT.
+DO NOT reproduce the word "Photoroom" anywhere in your output image.
+DO NOT use the diagonal "Photoroom" text pattern as a background texture or fill.
+The product itself is clean. Treat the reference as a pristine studio cutout with no watermark.
 ${verticalWarning}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCENE TO CREATE:
 ${scene.image_prompt}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+${safetyRules ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CULTURAL & COMPLIANCE RULES — MANDATORY:
+${safetyRules}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` : ''}
+
 PRODUCT INTEGRATION — MANDATORY:
-1. GRAVITY: The product has physical weight — it sits firmly on the surface, never floating.
-2. CONTACT SHADOW: Render a realistic shadow where the product meets the surface.
-3. LIGHT WRAP: The scene's ambient light wraps the product surfaces naturally.
+1. GRAVITY: The product has physical weight. It sits firmly on the surface. It is NOT floating or hovering above the surface.
+2. CONTACT SHADOW: Render a realistic shadow exactly where the product meets the surface — matching the scene's light direction and intensity.
+3. LIGHT WRAP: The scene's ambient light wraps the product surfaces. Warm room = warm product highlights. Cool studio = neutral product tones.
 ${fullProductRule}
-5. EXACT FIDELITY: Reproduce the product's exact shape, color, material finish, and proportions. Do not invent features or alter the form.
+5. EXACT FIDELITY: Reproduce the product's exact shape, color, material finish, and proportions from the reference. Do not invent features, change colors, or alter the form.
 
 ${anglePlacement}
 
@@ -194,10 +207,17 @@ ${qualityDirective}
 ${audienceColor}
 Aspect ratio: ${aspectRatio}
 
-OUTPUT REQUIREMENTS:
-✓ A single photorealistic product photograph — nothing else
-✓ No collage, split-screen, multi-panel, or grid layout
-✓ No "Photoroom" text or diagonal text pattern anywhere
-✓ No floating product — product must contact a surface
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+THE OUTPUT IMAGE MUST NOT CONTAIN:
+✗ The word "Photoroom" — anywhere in the image
+✗ Any diagonal text pattern or repeated word used as background texture or fill
+✗ A floating or hovering product (product must touch a surface)
+✗ A fully cropped product (except closeup angle — see above)
+✗ Collage, split-screen, multi-panel, or grid layout
+✗ Ghosted or semi-transparent product edges
+✗ Multiple copies of the product
+✗ Unrelated objects cluttering the foreground
+${marketProhibitions ? marketProhibitions : ''}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim()
 }

@@ -11,6 +11,7 @@ import { create } from 'zustand'
 import { useRealtimeRun } from '@trigger.dev/react-hooks'
 import type { generatePackTask, MetadataImage } from '@/trigger/generate-pack'
 import type { GeneratedPack, ProductProfile, UserConfig } from '@/lib/types'
+import { REGIONS } from '@/lib/regions'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -157,12 +158,14 @@ export const useGenerationStore = create<GenerationStore>((set, get) => ({
         },
         userConfig: {
           platform: config.platform ?? 'instagram_post',
-          country: config.regionId ?? undefined,
+          // Resolve regionId (e.g. 'saudi') to full label (e.g. 'Saudi Arabia')
+          // so resolveLanguageFromCountry() can match it in COUNTRY_LANGUAGE_MAP
+          country: config.regionId ? (REGIONS[config.regionId as keyof typeof REGIONS]?.label ?? config.regionId) : undefined,
           ageRange: config.ageRange ?? undefined,
           gender: config.gender ?? undefined,
           interest: config.interest ?? undefined,
         },
-        marketingLanguage: config.language || 'market language',
+        marketingLanguage: config.language || 'auto',
       }
 
       const res = await fetch('/api/generate', {
