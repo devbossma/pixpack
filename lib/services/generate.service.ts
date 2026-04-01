@@ -164,7 +164,7 @@ export async function generatePack(
     let base64: string | null = null
     try {
       const result = await retryOnRateLimit(
-        () => generateSingleImage(ai, scene, platform, productBase64, productMimeType, userConfig, productProfile.productHint ?? undefined),
+        () => generateSingleImage(ai, scene, platform, productBase64, productMimeType, userConfig, productProfile.productHint ?? undefined, productProfile),
         {
           maxAttempts: 3,
           backoffMs: 15_000,
@@ -376,9 +376,10 @@ async function generateSingleImage(
   productMimeType: string,
   userConfig?: UserConfig,
   productHint?: string,
+  productProfile?: ProductProfile,
 ): Promise<{ image: GeneratedImage; base64: string | null }> {
   const aspectRatio = ASPECT_RATIOS[platform] ?? '1:1'
-  const imagePrompt = buildImageGenerationPrompt(scene, aspectRatio, userConfig, productHint)
+  const imagePrompt = buildImageGenerationPrompt(scene, aspectRatio, userConfig, productHint, productProfile)
 
   // ── Attempt 1: full detailed prompt ────────────────────────────────────────
   const attempt1 = await ai.models.generateContent({

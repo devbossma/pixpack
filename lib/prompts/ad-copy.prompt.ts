@@ -71,6 +71,24 @@ const VARIATION_COPY_ANGLE: Record<string, string> = {
     social_proof: 'Trust & Authenticity. Write as if a real customer is recommending the product to a friend. Use first-person enthusiasm, mention the unboxing moment or first impression. Social proof energy — "I ordered this and..." or "Not sponsored, genuinely obsessed".',
 }
 
+// ─── Category-specific copy amplifiers ────────────────────────────────────────
+// The archetype tells us the EMOTIONAL dimension to activate.
+// The category amplifier tells us HOW to write for this product type.
+// Both are injected together — archetype is the feeling, category is the craft.
+
+const CATEGORY_COPY_AMPLIFIERS: Record<string, string> = {
+  pet: 'Write with deep pet-parent empathy. Speak directly to their bond ("your dog deserves", "cats know better"). Use specific breed or animal behavior details — vague animal references feel fake. The pet\'s comfort and happiness IS the parent\'s peace of mind.',
+  beauty: 'Lead with sensory precision — texture, sensation, scent, the exact moment of application. Never say "glowing skin" — say "the kind of skin that catches light from across a room". Real application detail (how it feels, how fast it absorbs, the finish it leaves) is more convincing than any claim.',
+  sports: 'Write as if the athlete is already mid-session, not sitting on a couch. Use kinetic verbs — "locks in", "holds under load", "powers through", "doesn\'t slip". A specific performance metric beats any adjective.',
+  food: 'Activate the appetite with sensory precision — smell, taste, texture, temperature, the specific flavour note. Never "delicious" — say "the caramel note that hits at the back of the throat on the finish". Make the reader\'s mouth water before they finish the sentence.',
+  tech: 'Translate every spec into a human outcome first, then show the number. "4 hours of battery life" is forgettable. "One full workday on a single charge — yes, including the video calls" is not. Lead with the single most impressive spec in plain language.',
+  fashion: 'Write to identity before appearance. A bag isn\'t a bag — it\'s the statement the outfit makes. Reference specific style moments, real wardrobe situations. "The piece that makes the rest of your look make sense." Aspiration must feel attainable, not generic luxury.',
+  home: 'Write to the feeling of the home, not the object. A candle isn\'t a candle — it\'s Tuesday evening finally unwinding. A throw isn\'t a throw — it\'s the cold couch fix. Make the reader feel the room, not just see the product.',
+  kids: 'Serve two audiences in one piece: the parent\'s peace of mind (safety, developmental value, easy cleanup) AND the child\'s pure delight (fun, colour, play). Lead with whichever one matches the archetype, then address the other.',
+  handmade: 'Tell the story of the hands that made it — specific material origin, craft tradition, the visible imperfections that prove it\'s real. "No two are exactly alike" is earned, not claimed. Machine-made products don\'t look like this, and your copy should make that obvious.',
+  general: 'Lead with the clearest, most specific benefit observable from the product. No abstract claims — only the concrete, tangible difference this product makes in someone\'s actual day.',
+}
+
 // ─── Archetype copy techniques ────────────────────────────────────────────────
 // Concrete writing instructions per emotional archetype.
 
@@ -106,11 +124,35 @@ export interface AdCopyInput {
     strategy?: StrategyOutput  // optional — present when Creative Director v5+ is used
 }
 
+// ─── Category resolver ────────────────────────────────────────────────────────
+// Mirrors the category detection logic in creative-director.prompt.ts
+// so copy receives the same product-type context the Creative Director used.
+
+function resolveCopyCategory(productProfile: ProductProfile): string {
+    const type = (productProfile.product_type ?? '').toLowerCase()
+    const useCases = (productProfile.use_cases ?? []).join(' ').toLowerCase()
+    const combined = `${type} ${useCases}`
+
+    if (/\b(pet|dog|cat|animal|collar|leash|toy.*pet|pet.*toy|treats?|paw|fur)\b/.test(combined)) return 'pet'
+    if (/\b(serum|moisturizer|cleanser|toner|sunscreen|lipstick|mascara|foundation|blush|perfume|shampoo|conditioner|body.?wash|soap|skincare|haircare|nail|beauty|cosmetic|makeup|lotion|cream|balm)\b/.test(combined)) return 'beauty'
+    if (/\b(gym|fitness|workout|running|yoga|sports|athletic|cycling|hiking|climbing|training|resistance|weights|protein|supplement|performance)\b/.test(combined)) return 'sports'
+    if (/\b(coffee|tea|beverage|drink|food|snack|supplement|protein.?bar|chocolate|olive.?oil|sauce|seasoning|spice|kitchen|cookware|mug|cup|flask)\b/.test(combined)) return 'food'
+    if (/\b(phone|laptop|tablet|headphone|earphone|charger|cable|speaker|camera|gadget|tech|device|keyboard|mouse|monitor|usb|wireless|bluetooth|smart.?watch)\b/.test(combined)) return 'tech'
+    if (/\b(bag|handbag|wallet|purse|watch|jewelry|necklace|ring|bracelet|earring|clothing|shirt|dress|jacket|coat|jeans|sneaker|boot|shoe|sunglasses|belt|scarf|hat)\b/.test(combined)) return 'fashion'
+    if (/\b(candle|vase|cushion|pillow|blanket|throw|lamp|light|plant|pot|planter|frame|mirror|clock|shelf|decor|home|furniture|rug|curtain|towel)\b/.test(combined)) return 'home'
+    if (/\b(toy|baby|infant|toddler|kids?|child|children|nursery|stroller|feeding|diaper|sippy|rattle|puzzle|educational|playmat)\b/.test(combined)) return 'kids'
+    if (/\b(handmade|hand.?made|handcrafted|artisan|artisanal|bespoke|custom.?made|small.?batch|hand.?sewn|hand.?woven|hand.?knit|hand.?painted|hand.?carved|pottery|ceramics|woodworking|leather.?work|macram[eé]|crochet|embroidery)\b/.test(combined)) return 'handmade'
+    return 'general'
+}
+
 export function buildAdCopyPrompt(input: AdCopyInput): string {
     const { productProfile, userConfig, variations, language, strategy } = input
 
     const platform = userConfig.platform ?? 'instagram_post'
     const spec = PLATFORM_COPY_SPEC[platform] ?? PLATFORM_COPY_SPEC.instagram_post
+
+    const copyCategory = resolveCopyCategory(productProfile)
+    const categoryAmplifier = CATEGORY_COPY_AMPLIFIERS[copyCategory] ?? CATEGORY_COPY_AMPLIFIERS.general
 
     const audienceContext = [
         userConfig.ageRange && `Age: ${userConfig.ageRange}`,
@@ -189,6 +231,12 @@ CRITICAL: You MUST write ALL copy in ${language}. Every word. No exceptions. Not
 ${strategySection}
 ${FORBIDDEN_PHRASES}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRODUCT CATEGORY: ${copyCategory.toUpperCase()}
+CATEGORY WRITING CRAFT — THIS IS HOW YOU WRITE FOR THIS TYPE OF PRODUCT:
+${categoryAmplifier}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 COPYWRITING RULES:
 1. THE HOOK: Every Awareness piece MUST start with a hook. No "Welcome to..." or "Discover our...".
    Start with: A surprising fact, a polarizing question, a specific pain point, or a vivid "After" state.
@@ -196,6 +244,7 @@ COPYWRITING RULES:
 3. SPECIFICITY: If the product has a 5000mAh battery, say "5000mAh battery" — do NOT say "long-lasting battery".
 4. TONE: Match the tone guide exactly: ${strategy?.tone_guide ?? 'High energy, authority, and empathy. Speak TO the user, not AT them.'}
 5. FORMATTING: Use bullet points (•) in the Consideration section for readability.
+6. CATEGORY CRAFT: Apply the category writing technique above — every line should feel like it was written by someone who deeply understands this product type.
 
 ---
 

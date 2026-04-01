@@ -105,6 +105,19 @@ const BACKGROUND_COLOR_POOL: string[] = [
   'deep burgundy matte backdrop',
 ]
 
+// ─── Shooting angle pool ───────────────────────────────────────────────────────
+// One distinct camera position is assigned per variation.
+// This prevents all 4 images from defaulting to the same 45° front-on view.
+
+const SHOOTING_ANGLE_POOL = [
+  'Eye-level straight-on (0° elevation) — camera at product height, lens aimed directly at the front face',
+  '45° elevated front-corner — camera above and in front of the product at a classic advertising three-quarter angle',
+  'Low-angle 10-15° elevation — camera near surface level, product appears to tower slightly, ground texture prominent',
+  'Overhead flat lay (90° top-down) — camera directly above product on the surface, geometry-led composition',
+  '30° side-raking — camera at slight elevation off to one side, light rakes across surface texture from the same direction',
+  'Close-proximity 45° — camera close enough that product fills 80% of frame, texture and finish details dominate',
+]
+
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
@@ -298,6 +311,8 @@ export function buildCreativeDirectorPrompt(
   const [surface1, surface2, surface3, surface4] = pickN(SURFACE_TEXTURE_POOL, 4)
   // Pick 4 distinct background colors for hero/studio shots
   const heroBg = pick(BACKGROUND_COLOR_POOL)
+  // Pick 4 distinct shooting angles — prevents all variations using the same camera position
+  const [angle1, angle2, angle3, angle4] = pickN(SHOOTING_ANGLE_POOL, 4)
 
   // ── Product-category context ──────────────────────────────────────────────────
   const productCtx = deriveProductContext(productProfile)
@@ -379,24 +394,33 @@ Variation 1 (LIFESTYLE) seeds:
   - Time of day: ${time1}
   - Color palette: ${palette1}
   - Surface material: ${surface1}
+  - Shooting angle: ${angle1}
+  - Aperture/DOF: f/1.8–f/2.8 — shallow depth of field, background falls into soft bokeh
   - Appropriate lifestyle setting: ${productCtx.lifestyle_setting}
 
 Variation 2 (HERO/STUDIO) seeds:
-  - Time of day: ${time2} (affects light on product)
+  - Time of day: ${time2} (affects light direction on product)
   - Color palette: ${palette2}
   - Surface material: ${surface2}
   - Background color: ${heroBg}
+  - Shooting angle: ${angle2}
+  - Aperture/DOF: f/8–f/11 — deep focus, every product detail razor-sharp
+  - Lighting setup: 3-point studio — key light 45° front-corner, fill at 2:1 ratio, rim light separating product from background
 
 Variation 3 (CONTEXT/ASPIRATIONAL) seeds:
   - Time of day: ${time3}
   - Color palette: ${palette3}
   - Surface material: ${surface3}
+  - Shooting angle: ${angle3}
+  - Aperture/DOF: f/4–f/5.6 — product sharp, environment in soft focus behind
   - Appropriate aspirational setting: ${productCtx.context_setting}
 
 Variation 4 (SOCIAL PROOF/UGC) seeds:
   - Time of day: ${time4}
   - Color palette: ${palette4}
   - Surface material: ${productCtx.social_proof_surface}
+  - Shooting angle: ${angle4}
+  - Aperture/DOF: f/1.8 phone portrait-mode equivalent — organic, slightly shallow DOF mimicking smartphone camera
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCENE DESCRIPTION RULES — NON-NEGOTIABLE:
@@ -482,22 +506,22 @@ Return ONLY valid JSON. No markdown. No code fences. Start directly with {
     {
       "variation": 1,
       "angle": "lifestyle",
-      "image_prompt": "<4 sentences: (1) exact surface material from seed · (2) human/animal element embodying the PRIMARY archetype visually · (3) 2-3 named props establishing the emotional environment · (4) background with specific light direction and color temperature. No product name.>"
+      "image_prompt": "<5 sentences: (1) exact surface material from seed, product pressing firmly onto it with a contact shadow · (2) human/animal element embodying the PRIMARY archetype visually · (3) 2-3 named props establishing the emotional environment · (4) background with specific light direction and color temperature · (5) Camera: ${angle1}, f/1.8–2.8 shallow DOF, background falls into soft bokeh, ${time1} light quality. No product name.>"
     },
     {
       "variation": 2,
       "angle": "hero",
-      "image_prompt": "<3 sentences: (1) exact surface material from seed, product centered pressing firmly onto it with a contact shadow · (2) lighting that visually embodies the SECONDARY archetype · (3) background is exactly ${heroBg} — seamless, no texture, no pattern. No product name.>"
+      "image_prompt": "<4 sentences: (1) exact surface material from seed, product centered pressing firmly onto it with a sharp contact shadow · (2) 3-point studio lighting: key light 45° front-corner creating the main highlight, fill at 2:1 ratio softening shadows, rim light creating a bright separation edge — this lighting visually embodies the SECONDARY archetype · (3) background is exactly ${heroBg} — seamless, no texture, no pattern · (4) Camera: ${angle2}, f/8–11 deep focus, every detail of the product is razor-sharp. No product name.>"
     },
     {
       "variation": 3,
       "angle": "context",
-      "image_prompt": "<4 sentences: (1) exact surface material · (2) at least 3 specifically named environmental props that build the world the SECONDARY archetype lives in · (3) background wall/window with exact material and color · (4) light quality and direction. No person. No product name.>"
+      "image_prompt": "<5 sentences: (1) exact surface material from seed, product resting naturally · (2) at least 3 specifically named environmental props building the world the SECONDARY archetype lives in · (3) background wall/window with exact material and color · (4) light quality, direction and color temperature · (5) Camera: ${angle3}, f/4–5.6, product sharp, environmental scene behind in soft focus. No person. No product name.>"
     },
     {
       "variation": 4,
       "angle": "social_proof",
-      "image_prompt": "<4 sentences: (1) domestic surface from seed, product fully visible pressing onto it · (2) hand or packaging casually visible, embodying TERTIARY archetype feeling · (3) personal items in frame that feel organic (phone, receipt, mug) · (4) background blurred domestic interior with specific light direction. No product name.>"
+      "image_prompt": "<5 sentences: (1) domestic surface from seed, product fully visible pressing onto it · (2) hand or packaging casually visible, embodying TERTIARY archetype feeling · (3) personal items in frame that feel organic (phone, receipt, mug, keys) · (4) background blurred domestic interior with specific ambient light direction · (5) Camera: ${angle4}, f/1.8 phone portrait-mode simulation, warm ambient window light, no studio flash. No product name.>"
     }
   ],
   "posting_schedule": {

@@ -25,6 +25,10 @@ export interface ProductAnalysis {
   key_selling_points?: string[]
   visual_mood?: string
   competitor_positioning?: string
+  // ── Photographic rendering hints (added v2) ─────────────────────────────────
+  surface_finish?: 'matte' | 'glossy' | 'metallic' | 'transparent' | 'fabric' | 'ceramic' | 'leather' | 'wood' | 'mixed'
+  dominant_colors?: string[]   // 2-3 descriptive color values from the product itself
+  shooting_mood?: string       // lighting style that would make this product look most professional
 }
 
 export interface AnalyzeResponse {

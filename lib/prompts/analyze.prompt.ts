@@ -46,12 +46,20 @@ Return ONLY a valid JSON object. No markdown. No explanation. Start directly wit
     "<practical benefit — problem it solves, e.g. 'converts from shoulder bag to backpack in two seconds, hands-free for cyclists'>"
   ],
   "visual_mood": "<the feeling the product evokes — e.g. 'calm sophistication, like a well-edited wardrobe' / 'raw energy, like a pre-race locker room' / 'cosy abundance, like Sunday morning in a warm kitchen'>",
-  "competitor_positioning": "<market context in one sentence — e.g. 'premium alternative to Coach at Mango price point' / 'sustainable option in the fast-fashion accessories space' / 'prosumer tool bridging the gap between hobbyist and professional'>"
+  "competitor_positioning": "<market context in one sentence — e.g. 'premium alternative to Coach at Mango price point' / 'sustainable option in the fast-fashion accessories space' / 'prosumer tool bridging the gap between hobbyist and professional'>",
+  "surface_finish": "<single word that best describes the product's dominant surface: matte | glossy | metallic | transparent | fabric | ceramic | leather | wood | mixed>",
+  "dominant_colors": [
+    "<primary product color — descriptive, e.g. 'warm cognac tan' / 'brushed gunmetal grey' / 'deep forest green'>",
+    "<secondary color if present — e.g. 'aged brass hardware' / 'cream canvas body'>",
+    "<accent or contrast color if present — e.g. 'burnt orange stitching' / 'matte black trim'>"
+  ],
+  "shooting_mood": "<the photographic lighting style that would make this product look most professional — e.g. 'bright airy natural daylight with soft shadows' / 'moody low-key studio with rim lights and deep shadows' / 'warm golden-hour side light for texture drama' / 'clean high-key commercial white studio, every detail sharp'>"
 }
 
 Rules:
 - Describe ONLY what you can actually observe in the image — no assumptions.
 - Forbidden words: 'high quality', 'versatile', 'stylish', 'beautiful', 'premium feel' — these are meaningless.
 - Every field must be concrete enough to paste directly into an ad.
+- For surface_finish: choose the ONE word that best represents the product's primary surface material finish.
 `.trim()
 }

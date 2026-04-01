@@ -111,6 +111,7 @@ async function analyzeWithVision(
     ],
     config: {
       responseMimeType: 'application/json',
+      temperature: 0.1,  // Low temperature: factual extraction — consistent, deterministic analysis
       maxOutputTokens: 4096,
     },
   })
