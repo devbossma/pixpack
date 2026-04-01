@@ -8,6 +8,7 @@
  * No Next.js / HTTP concerns here.
  */
 
+import sharp from 'sharp'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createVertexClient } from '../vertex-client'
 import { buildAnalyzePrompt } from '../prompts/analyze.prompt'
@@ -30,6 +31,50 @@ export async function analyzeProduct(input: AnalyzeInput): Promise<AnalyzeRespon
   ])
 
   return { extractedImageUrl, analysis }
+}
+
+// ---- Watermark scrubber -------------------------------------------------------
+//
+// Photoroom sandbox returns a PNG where the alpha channel correctly marks the
+// product subject, BUT the RGB channels still carry the "Photoroom" diagonal
+// watermark text — even over pixels that should be fully transparent.
+//
+// When Gemini receives this image it flattens transparency to white internally,
+// making the "Photoroom" text clearly visible, and then sometimes reproduces it
+// as a background pattern in the generated image.
+//
+// Fix: walk every pixel. If Photoroom's alpha says this pixel is background
+// (alpha < THRESHOLD), zero out its RGB too — making it cleanly transparent
+// with no color information. This eliminates the watermark from all background
+// areas. The residual watermark on product pixels (alpha > THRESHOLD) is
+// already handled by the existing prompt instruction.
+
+const ALPHA_BACKGROUND_THRESHOLD = 15  // pixels below this are background, not product
+
+async function cleanWatermark(watermarkedBuffer: ArrayBuffer): Promise<Buffer> {
+  const input = Buffer.from(watermarkedBuffer)
+
+  // Read raw RGBA data — 4 bytes per pixel
+  const { data, info } = await sharp(input)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+
+  // Walk every pixel: zero out RGB where Photoroom marked the pixel as background
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < ALPHA_BACKGROUND_THRESHOLD) {
+      data[i]     = 0  // R
+      data[i + 1] = 0  // G
+      data[i + 2] = 0  // B
+      data[i + 3] = 0  // A — fully transparent, no color data
+    }
+  }
+
+  return sharp(data, {
+    raw: { width: info.width, height: info.height, channels: 4 },
+  })
+    .png({ compressionLevel: 6 })
+    .toBuffer()
 }
 
 // ---- Task A: Photoroom background removal + Supabase upload -----------------
@@ -58,17 +103,25 @@ async function extractBackground(file: File): Promise<string> {
   // Watermarked images cause Gemini to reproduce the "Photoroom" text as background texture.
   const creditsCharged = response.headers.get('x-credits-charged')
   const creditsRemaining = response.headers.get('x-credits-remaining')
-  if (creditsCharged === '0') {
+  const isWatermarked = creditsCharged === '0'
+
+  if (isWatermarked) {
     console.warn(
-      '[photoroom] WARNING: x-credits-charged=0 — image will be watermarked.',
+      '[photoroom] x-credits-charged=0 — sandbox watermark detected. Cleaning pixels before upload.',
       `Credits remaining: ${creditsRemaining ?? 'unknown'}.`,
-      'Top up at https://app.photoroom.com/api-dashboard',
     )
   } else {
     console.log(`[photoroom] OK — credits charged: ${creditsCharged}, remaining: ${creditsRemaining}`)
   }
 
-  const arrayBuffer = await response.arrayBuffer()
+  const rawArrayBuffer = await response.arrayBuffer()
+
+  // If watermarked: scrub background pixels so "Photoroom" text has no RGB data.
+  // Gemini sees a clean transparent cutout instead of diagonal watermark text on white.
+  const imageBuffer: Buffer = isWatermarked
+    ? await cleanWatermark(rawArrayBuffer)
+    : Buffer.from(rawArrayBuffer)
+
   const filename = `extracted-${crypto.randomUUID()}.png`
 
   const supabase = createSupabaseClient(
@@ -78,7 +131,7 @@ async function extractBackground(file: File): Promise<string> {
 
   const { error: uploadError } = await supabase.storage
     .from('pack_assets')
-    .upload(filename, arrayBuffer, { contentType: 'image/png', cacheControl: '3600', upsert: false })
+    .upload(filename, imageBuffer, { contentType: 'image/png', cacheControl: '3600', upsert: false })
 
   if (uploadError) throw uploadError
 
