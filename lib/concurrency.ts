@@ -92,6 +92,8 @@ export function isRateLimitError(msg: string): boolean {
     msg.includes('Resource exhausted') ||
     msg.includes('RESOURCE_EXHAUSTED') ||
     msg.includes('overloaded')         ||
-    msg.includes('UNAVAILABLE')
+    msg.includes('UNAVAILABLE')        ||
+    msg.includes('JSON')               ||
+    msg.includes('malformed')
   )
 }

@@ -232,7 +232,7 @@ async function runCreativeDirector(
           responseMimeType: 'application/json',
           temperature: 1.0,  // High temperature: entropy seeds in prompt keep it grounded, but we need creative range
           topP: 0.95,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 8192,
         },
       })
 
@@ -245,7 +245,13 @@ async function runCreativeDirector(
         throw new Error('Creative Director returned no JSON')
       }
 
-      const parsed = JSON.parse(raw.slice(firstBrace, lastBrace + 1)) as CreativeJson
+      let parsed: CreativeJson;
+      try {
+        parsed = JSON.parse(raw.slice(firstBrace, lastBrace + 1)) as CreativeJson;
+      } catch (e: any) {
+        console.error('[stage1] JSON Parse failed. Length:', raw.length, e.message);
+        throw new Error(`Transient JSON Parse Error: ${e.message}`);
+      }
 
       if (!parsed.variations?.length) {
         throw new Error('Creative Director returned empty variations')
