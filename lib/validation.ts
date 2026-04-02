@@ -14,7 +14,7 @@ export const PlatformSchema = z.enum([
   'tiktok',
   'facebook_post',
   'shopify_product',
-  'web_banner',
+  'etsy_product',
 ])
 
 export const AngleSchema = z.enum(['lifestyle', 'flatlay', 'closeup', 'model', 'hero'])

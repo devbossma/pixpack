@@ -212,7 +212,7 @@ const jsonLd = {
           name: 'Which platforms does PixPack support?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack generates images sized for Instagram Post (1080×1080), Instagram Story (1080×1920), TikTok (1080×1920), Facebook Post (1200×630), Shopify Product (800×800), and Web Banner (1920×600).',
+            text: 'PixPack generates images sized for Instagram Post (1080×1080), Instagram Story (1080×1920), TikTok (1080×1920), Facebook Post (1200×630), Shopify Product (800×800), and Etsy Product (2700×2025).',
           },
         },
         {

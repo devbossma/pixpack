@@ -137,8 +137,8 @@ export function OutputCard({ image, index, onDownloadZip, desktopGrid }: OutputC
     </div>
   )
 
-  // ─── SHOPIFY PRODUCT PAGE MOCKUP ────────────────────────────────────────────
-  if (image.platform === 'shopify_product') {
+  // ─── E-COMMERCE PRODUCT PAGE MOCKUP ────────────────────────────────────────────
+  if (image.platform === 'shopify_product' || image.platform === 'etsy_product') {
     const ANGLE_PRODUCT_NAMES: Record<string, string> = {
       lifestyle: 'Everyday Essential',
       hero:      'Premium Edition',
@@ -159,7 +159,9 @@ export function OutputCard({ image, index, onDownloadZip, desktopGrid }: OutputC
           <div className="w-5 h-5 rounded bg-[#008060] flex items-center justify-center">
             <svg viewBox="0 0 24 24" width="12" height="12" fill="white"><path d="M21.9 6.6c-.1-.5-.5-.8-1-.9L8 4.3c-.5-.1-1 .2-1.2.7L3.3 17c-.2.5 0 1 .5 1.3l8 4c.2.1.4.1.6.1.2 0 .5-.1.7-.2l9-5.5c.4-.2.6-.7.5-1.1L21.9 6.6z"/></svg>
           </div>
-          <span className="text-[13px] font-bold text-[#1A1A1A] dark:text-white tracking-tight">PixPack Store</span>
+          <span className="text-[13px] font-bold text-[#1A1A1A] dark:text-white tracking-tight">
+            {image.platform === 'etsy_product' ? 'Etsy Shop' : 'PixPack Store'}
+          </span>
         </div>
         <div className="flex items-center gap-3 text-[#5C5F62] dark:text-[#A6A6A6]">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -372,189 +374,6 @@ export function OutputCard({ image, index, onDownloadZip, desktopGrid }: OutputC
             </div>
           </>
         )}
-      </motion.div>
-    )
-  }
-
-  // ─── WEB BANNER MOCKUP ─────────────────────────────────────────────────────
-  if (image.platform === 'web_banner') {
-    const BrowserHeader = () => (
-      <div className="flex flex-col shrink-0 bg-[#F1F3F4] dark:bg-[#202124]">
-        {/* Browser Tabs */}
-        <div className="flex items-center gap-1 px-2 pt-1.5 overflow-hidden">
-          <div className="h-7 px-3 bg-white dark:bg-[#353639] rounded-t-lg flex items-center gap-2 max-w-[120px]">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#ff4d1c] shadow-sm shrink-0" />
-            <span className="text-[10px] font-medium text-[#202124] dark:text-white truncate">PixPack Store</span>
-          </div>
-          <div className="h-5 w-5 rounded-full hover:bg-black/10 flex items-center justify-center text-[#5F6368] mb-1.5 ml-1">
-            <Plus size={10} />
-          </div>
-        </div>
-        {/* URL Bar */}
-        <div className="h-9 px-3 flex items-center gap-3 bg-white dark:bg-[#353639] border-t border-[#DCDFE1] dark:border-[#202124]">
-          <div className="flex items-center gap-3 text-[#5F6368] dark:text-[#9AA0A6]">
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M15 19l-7-7 7-7" /></svg>
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M9 5l7 7-7 7" /></svg>
-            <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-          </div>
-          <div className="flex-1 h-6 bg-[#F1F3F4] dark:bg-[#202124] rounded-full px-3 flex items-center gap-2">
-            <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <span className="text-[10px] text-[#202124] dark:text-white/50 opacity-40">pixpack.store/new-collection</span>
-          </div>
-        </div>
-      </div>
-    )
-
-    const WebsiteHeader = () => (
-      <div className="flex items-center justify-between px-6 py-4 bg-white dark:bg-[#0c0c0b] border-b border-black/5 flex-shrink-0">
-        <div className="flex items-center gap-8">
-          <span className="font-display font-black text-sm tracking-tighter text-[var(--text)]">
-            Pix<span className="text-[var(--accent)]">Pack</span>
-          </span>
-          <nav className="hidden md:flex items-center gap-5 text-[10px] font-bold uppercase tracking-widest text-[#666] dark:text-[#999]">
-            <span className="text-[var(--text)]">Shop</span>
-            <span>Collection</span>
-            <span>About</span>
-            <span className="text-red-500">Sale</span>
-          </nav>
-        </div>
-        <div className="flex items-center gap-4 text-[#666] dark:text-[#999]">
-          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <div className="relative">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[#ff4d1c] text-white text-[8px] font-black flex items-center justify-center">0</span>
-          </div>
-        </div>
-      </div>
-    )
-
-    return (
-      <motion.div
-        {...cardEntrance(index)}
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-        className={[
-          'relative w-full bg-[#0c0c0b] flex flex-col overflow-hidden group',
-          desktopGrid
-            ? 'h-full rounded-none border-0'
-            : 'h-[100dvh] md:h-full md:rounded-2xl rounded-none md:border border-[var(--output-border)] border-0 snap-center',
-        ].join(' ')}
-      >
-        <BrowserHeader />
-        <WebsiteHeader />
-
-        <div className="relative flex-1 min-h-0 bg-white dark:bg-[#0c0c0b] flex flex-col items-center justify-center overflow-hidden">
-          {/* Banner Container */}
-          <div className="relative w-full h-full flex flex-col items-center justify-center overflow-hidden">
-            {image.status === 'error' && !hasImageSrc(image) ? (
-              <div className="flex flex-col items-center gap-2 p-8 text-center text-red-500">
-                <AlertTriangle size={36} />
-                <p className="text-xs font-bold uppercase tracking-widest">Banner failed to generate</p>
-              </div>
-            ) : !hasImageSrc(image) ? (
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-10 h-10 rounded-full border-[3px] border-[#ff4d1c]/20 border-t-[#ff4d1c] animate-spin" />
-                <span className="text-[10px] font-black font-display tracking-widest uppercase text-[#ff4d1c]">Rendering Web Banner...</span>
-              </div>
-            ) : (
-              <img src={getImageSrc(image)!} className="absolute inset-0 w-full h-full object-cover" alt="Web Banner" />
-            )}
-
-            {/* Content Overlay */}
-            {hasImageSrc(image) && (
-              <div className="absolute inset-0 bg-black/35 flex flex-col items-center justify-center p-6 sm:p-10 text-center pointer-events-none">
-                <div className="max-w-2xl mx-auto space-y-3 sm:space-y-6">
-                  <AnimatePresence mode="popLayout">
-                    <motion.div
-                      key={activeIdx}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="flex flex-col items-center gap-2 sm:gap-4 select-none drop-shadow-[0_2px_15px_rgba(0,0,0,0.6)]"
-                    >
-                      {/* Split Ad Copy logic */}
-                      {(() => {
-                        const copy = image.adCopy[activeTabId] || '…'
-                        const parts = copy.split(/[.!?\n]/)
-                        const header = parts[0]?.trim()
-                        const description = parts.slice(1).join('. ').trim()
-                        
-                        return (
-                          <>
-                            <h2 
-                               className="font-display font-black text-white leading-[1.1] tracking-tight uppercase"
-                               style={{ fontSize: 'clamp(1rem, 5vw, 2.75rem)' }}
-                            >
-                              {header}
-                            </h2>
-                            {description && (
-                              <p 
-                                className="text-white/90 font-medium leading-relaxed max-w-lg hidden sm:block italic"
-                                style={{ fontSize: 'clamp(0.75rem, 1.5vw, 1.1rem)' }}
-                              >
-                                {description}
-                              </p>
-                            )}
-                          </>
-                        )
-                      })()}
-                    </motion.div>
-                  </AnimatePresence>
-                  
-                  <motion.div 
-                    initial={{ opacity: 0, y: 15 }} 
-                    animate={{ opacity: 1, y: 0 }} 
-                    transition={{ delay: 0.25 }}
-                    className="pt-2 sm:pt-4"
-                  >
-                    <button className="px-5 sm:px-8 py-2 sm:py-3 bg-white text-black font-display font-black text-[9px] sm:text-[11px] uppercase tracking-widest rounded-full shadow-2xl pointer-events-auto hover:bg-[#ff4d1c] hover:text-white transition-all transform hover:scale-105 active:scale-95">
-                      Shop New Collection
-                    </button>
-                  </motion.div>
-                </div>
-              </div>
-            )}
-
-            {/* Download/Badge Overlay */}
-            {hasImageSrc(image) && (
-              <>
-                <button
-                  onClick={(e) => { e.stopPropagation(); onDownloadZip?.() }}
-                  className="absolute bottom-4 right-4 z-20 p-2.5 rounded-full bg-black/60 backdrop-blur-md text-white hover:bg-[#ff4d1c] transition shadow-xl pointer-events-auto border border-white/10"
-                >
-                  <Download size={14} />
-                </button>
-                <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[9px] font-bold text-white uppercase tracking-[0.2em] pointer-events-none border border-white/10 shadow-lg">
-                  Var {varLetter} · {image.angle}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Floating progress matrix at bottom */}
-        <div className="bg-white/95 dark:bg-[#0c0c0b]/95 backdrop-blur-md px-6 py-3 border-t border-black/5 flex items-center justify-between flex-shrink-0">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-[#ff4d1c]">A/B Testing Stage</span>
-            <span className="text-[11px] font-bold text-[var(--text)] opacity-80">{COPY_TABS[activeIdx].label}</span>
-          </div>
-          <div className="flex items-center gap-3 w-48 pointer-events-auto">
-             {COPY_TABS.map((tab, i) => (
-                <button
-                  key={tab.id}
-                  onClick={(e) => { e.stopPropagation(); setActiveIdx(i); setIsPaused(true) }}
-                  className="h-[4px] flex-1 rounded-full overflow-hidden bg-black/10 dark:bg-white/10 cursor-pointer"
-                >
-                  <motion.div
-                    className="h-full bg-[#ff4d1c]"
-                    initial={{ width: i < activeIdx ? '100%' : '0%' }}
-                    animate={{ width: i === activeIdx ? '100%' : i < activeIdx ? '100%' : '0%' }}
-                    transition={{ duration: i === activeIdx && !isPaused ? 6 : 0, ease: 'linear' }}
-                  />
-                </button>
-              ))}
-          </div>
-        </div>
       </motion.div>
     )
   }

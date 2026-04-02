@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { OutputCard } from './OutputCard'
+import { EtsyMockupGrid } from './EtsyMockupGrid'
 import type { GeneratedImage, Platform } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
 import { useGenerationStore } from '@/hooks/useGeneration'
@@ -14,7 +15,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   tiktok:          'TikTok',
   facebook_post:   'Facebook Post',
   shopify_product: 'Shopify Product',
-  web_banner:      'Web Banner',
+  etsy_product:    'Etsy Product',
 }
 
 const ANGLE_LABELS: Record<string, string> = {
@@ -100,6 +101,16 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
           <span className="text-[10px] text-[var(--output-muted)]">Generating…</span>
         </div>
       </div>
+    )
+  }
+
+  if (resolvedPlatform === 'etsy_product') {
+    return (
+      <EtsyMockupGrid
+        images={images}
+        isGenerating={isGenerating}
+        onDownloadZip={onDownloadZip}
+      />
     )
   }
 
@@ -192,7 +203,7 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
       <div className="hidden md:block flex-1 min-h-0 overflow-y-auto pr-1 select-none">
         <div className={[
           'grid gap-6 pb-6',
-          resolvedPlatform === 'web_banner' ? 'grid-cols-1 max-w-4xl mx-auto' : 'grid-cols-1 lg:grid-cols-2'
+          'grid-cols-1 lg:grid-cols-2'
         ].join(' ')}>
           {sortedImages.map((img, idx) => (
             <div

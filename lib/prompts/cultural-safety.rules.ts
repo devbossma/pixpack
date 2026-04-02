@@ -27,7 +27,7 @@ type MarketKey =
     | 'default'
 
 type CategoryKey = 'cosmetics' | 'beauty' | 'fashion' | 'food' | 'tech' | 'default'
-type PlatformKey = 'instagram_post' | 'instagram_story' | 'tiktok' | 'facebook_post' | 'shopify_product' | 'web_banner' | 'default'
+type PlatformKey = 'instagram_post' | 'instagram_story' | 'tiktok' | 'facebook_post' | 'shopify_product' | 'etsy_product' | 'default'
 
 // ─── Global base rules (always applied) ───────────────────────────────────────
 

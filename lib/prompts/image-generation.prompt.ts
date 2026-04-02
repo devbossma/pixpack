@@ -56,10 +56,10 @@ Lighting: 3-point studio. Crisp highlight roll-off on product edges.
 Background: Single clean surface (specified in scene). Zero distraction.
 `.trim(),
 
-  web_banner: `
-Shot on Phase One XF, 45mm panoramic. Ultra-wide 16:9.
-Lighting: Golden-hour cinematic side-light. Long directional shadows.
-Composition: Product anchored left or right. Large clean empty space for text overlay.
+  etsy_product: `
+Shot on Sony A7R IV, 50mm f/2.8. Artisan boutique 4:3.
+Lighting: Soft natural daylight, warm inviting tones, highlighting craftsmanship.
+Background: Textured but clean surface (e.g., reclaimed wood, linen), cozy aesthetic.
 `.trim(),
 }
 

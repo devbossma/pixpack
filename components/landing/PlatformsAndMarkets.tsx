@@ -12,8 +12,7 @@ const PLATFORMS = [
   { Icon: Video,       name: 'Instagram Story', dims: '1080 × 1920', accent: '#833AB4' },
   { Icon: Video,       name: 'TikTok Ad',       dims: '1080 × 1920', accent: '#010101' },
   { Icon: Facebook,    name: 'Facebook Post',   dims: '1200 × 630',  accent: '#1877F2' },
-  { Icon: ShoppingBag, name: 'Shopify Product', dims: '800 × 800',   accent: '#96BF48' },
-  { Icon: Monitor,     name: 'Web Banner',      dims: '1920 × 600',  accent: '#6366F1' },
+  { Icon: ShoppingBag, name: 'Etsy Product',    dims: '2700 × 2025', accent: '#F1641E' },
 ]
 
 const MARKETS = [

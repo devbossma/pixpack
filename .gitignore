@@ -84,5 +84,5 @@ code-snipet/
 
 
 .trigger
-.agent
-.claude
+.agent/
+.claude/

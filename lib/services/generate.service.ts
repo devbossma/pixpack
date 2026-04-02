@@ -29,6 +29,8 @@ import type {
   GeneratedImage, GeneratedPack,
   UserConfig, ProductProfile, StrategyOutput,
 } from '../types'
+import { PLATFORM_SPECS } from '../platforms'
+import sharp from 'sharp'
 import { isRateLimitError } from '../concurrency'
 
 // ─── Timing ───────────────────────────────────────────────────────────────────
@@ -51,7 +53,7 @@ const ASPECT_RATIOS: Record<string, string> = {
   tiktok: '9:16',
   facebook_post: '4:3',
   shopify_product: '1:1',
-  web_banner: '16:9',
+  etsy_product:    '4:3',
 }
 
 // ─── Streaming callbacks ──────────────────────────────────────────────────────
@@ -405,7 +407,13 @@ async function generateSingleImage(
   const imagePart1 = parts1.find(p => p.inlineData?.mimeType?.startsWith('image/'))
 
   if (imagePart1?.inlineData?.data) {
-    const { data, mimeType } = imagePart1.inlineData
+    let { data, mimeType } = imagePart1.inlineData
+    const spec = Object.keys(PLATFORM_SPECS).includes(platform) ? PLATFORM_SPECS[platform as keyof typeof PLATFORM_SPECS] : null
+    if (spec?.width && spec?.height) {
+      console.log(`[stage3] Resizing from native to exact dimensions ${spec.width}x${spec.height}...`)
+      data = await resizeImageBase64(data, mimeType ?? 'image/png', spec.width, spec.height)
+    }
+    
     return {
       image: {
         id: `img_${scene.variation}_${Date.now()}`,
@@ -460,7 +468,13 @@ Rules: single image, no text overlay, no collage, product touches a surface.`
     throw new Error(`No image in response. Model said: ${textFallback?.text?.slice(0, 200) ?? 'nothing'}`)
   }
 
-  const { data, mimeType } = imagePart2.inlineData
+  let { data, mimeType } = imagePart2.inlineData
+  const spec = Object.keys(PLATFORM_SPECS).includes(platform) ? PLATFORM_SPECS[platform as keyof typeof PLATFORM_SPECS] : null
+  if (spec?.width && spec?.height) {
+    console.log(`[stage3] Resizing from native to exact dimensions ${spec.width}x${spec.height}...`)
+    data = await resizeImageBase64(data, mimeType ?? 'image/png', spec.width, spec.height)
+  }
+
   return {
     image: {
       id: `img_${scene.variation}_${Date.now()}`,
@@ -471,6 +485,20 @@ Rules: single image, no text overlay, no collage, product touches a surface.`
       status: 'done',
     },
     base64: `data:${mimeType ?? 'image/png'};base64,${data}`,
+  }
+}
+
+async function resizeImageBase64(base64Data: string, mimeType: string, width: number, height: number): Promise<string> {
+  try {
+    const buffer = Buffer.from(base64Data, 'base64')
+    const resized = await sharp(buffer)
+      .resize(width, height, { fit: 'cover' })
+      .toFormat(mimeType === 'image/jpeg' ? 'jpeg' : 'png')
+      .toBuffer()
+    return resized.toString('base64')
+  } catch (error) {
+    console.error('[stage3] Sharp resize failed:', error)
+    return base64Data // fallback to original
   }
 }
 

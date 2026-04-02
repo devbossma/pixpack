@@ -51,7 +51,7 @@ const PLATFORM_FRAMING: Record<string, string> = {
   tiktok: 'Vertical 9:16. Dynamic creator-native angle. Motion-suggested background.',
   facebook_post: '4:3. Approachable, trust-building, relatable lifestyle composition.',
   shopify_product: '1:1. Commercial, zero clutter, single-surface studio.',
-  web_banner: '16:9. Product far left or right. Large negative space for copy overlay.',
+  etsy_product: '4:3. Artisan, boutique aesthetic. Focus on craftsmanship in a cozy setting.',
 }
 
 // ─── Creative entropy pools ─────────────────────────────────────────────────────

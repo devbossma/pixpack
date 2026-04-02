@@ -5,7 +5,7 @@ import { WorkspaceClient } from '@/components/WorkspaceClient'
 export default function WorkspacePage() {
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden">
-      <div className="hidden md:block">
+      <div className="shrink-0">
         <Topbar />
       </div>
       <div className="flex flex-1 overflow-hidden">

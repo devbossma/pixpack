@@ -22,7 +22,7 @@ const FAQS = [
   {
     k: 'platforms',
     q: 'Does it support my specific platform?',
-    a: 'We currently optimize for Instagram (Post + Story), TikTok Ads, Facebook (Post + Feed), Shopify Product Pages, and Web Banners. More professional dimensions are added to our beta weekly.',
+    a: 'We currently optimize for Instagram (Post + Story), TikTok Ads, Facebook (Post + Feed), Shopify Product Pages, and Etsy Product Listings. More professional dimensions are added to our beta weekly.',
   },
   {
     k: 'beta-status',

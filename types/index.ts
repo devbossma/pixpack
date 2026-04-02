@@ -40,7 +40,7 @@ export type Platform =
   | 'tiktok'
   | 'facebook_post'
   | 'shopify_product'
-  | 'web_banner'
+  | 'etsy_product'
 
 export interface PlatformSpec {
   id: Platform

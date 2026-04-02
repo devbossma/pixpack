@@ -53,10 +53,10 @@ const PLATFORM_COPY_SPEC: Record<string, {
         consideration: '6-8 sentences. Conversion-optimised product description. Narrative + technical specs. (~120-150 words)',
         conversion: '2 sentences. "Add to cart" incentive. 1 emoji.',
     },
-    web_banner: {
-        awareness: '1 short headline. Bold, benefit-led. 0 emojis. (~8-10 words)',
-        consideration: '2 sentences. The "Unique Selling Proposition" (USP). (~30-40 words)',
-        conversion: '3-5 words. Strong action verb.',
+    etsy_product: {
+        awareness: '2 sentences. Highlight the handmade/unique quality. 1 emoji. (~30-40 words)',
+        consideration: '4-5 sentences. Tell the story of the craft or the special touch. Connect with the buyer\'s search for something unique. 2-3 emojis. (~80-100 words)',
+        conversion: '2 sentences. Suggest as a perfect gift or personal treat. 1 emoji.',
     },
 }
 
