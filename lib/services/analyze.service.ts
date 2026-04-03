@@ -37,19 +37,23 @@ export async function analyzeProduct(input: AnalyzeInput): Promise<AnalyzeRespon
 //
 // Photoroom sandbox returns a PNG where the alpha channel correctly marks the
 // product subject, BUT the RGB channels still carry the "Photoroom" diagonal
-// watermark text — even over pixels that should be fully transparent.
+// watermark text across the ENTIRE image — including background AND product pixels.
 //
 // When Gemini receives this image it flattens transparency to white internally,
-// making the "Photoroom" text clearly visible, and then sometimes reproduces it
-// as a background pattern in the generated image.
+// making the "Photoroom" text clearly visible, and then reproduces it as a
+// background pattern in the generated image. Prompt instructions alone are not
+// sufficient — Gemini sees the pattern in the input and copies it regardless.
 //
-// Fix: walk every pixel. If Photoroom's alpha says this pixel is background
-// (alpha < THRESHOLD), zero out its RGB too — making it cleanly transparent
-// with no color information. This eliminates the watermark from all background
-// areas. The residual watermark on product pixels (alpha > THRESHOLD) is
-// already handled by the existing prompt instruction.
+// Partial fix: zero out RGB for all pixels below ALPHA_BACKGROUND_THRESHOLD.
+// This removes the watermark from background and most semi-transparent edge pixels.
+// Threshold of 200 (vs 15) is intentionally aggressive — it catches the entire
+// feathered product border where the diagonal text would otherwise bleed through.
+//
+// Known limitation: watermark text that overlies fully-opaque product pixels
+// (alpha = 200–255) cannot be removed with pixel scrubbing. Removing it would
+// require Gemini inpainting or a Photoroom account with active credits.
 
-const ALPHA_BACKGROUND_THRESHOLD = 15  // pixels below this are background, not product
+const ALPHA_BACKGROUND_THRESHOLD = 200  // zero out RGB for all pixels below 78% opacity
 
 async function cleanWatermark(watermarkedBuffer: ArrayBuffer): Promise<Buffer> {
   const input = Buffer.from(watermarkedBuffer)

@@ -5,6 +5,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { OutputCard } from './OutputCard'
 import { EtsyMockupGrid } from './EtsyMockupGrid'
+import { ShopifyMockupGrid } from './ShopifyMockupGrid'
+import { InstagramPostMockup } from './InstagramPostMockup'
+import { InstagramStoryMockup } from './InstagramStoryMockup'
+import { TikTokMockup } from './TikTokMockup'
+import { FacebookMockup } from './FacebookMockup'
 import type { GeneratedImage, Platform } from '@/types'
 import { PLATFORM_SPECS } from '@/lib/platforms'
 import { useGenerationStore } from '@/hooks/useGeneration'
@@ -104,15 +109,14 @@ export function OutputGrid({ images, platform, isGenerating, onDownloadZip }: Ou
     )
   }
 
-  if (resolvedPlatform === 'etsy_product') {
-    return (
-      <EtsyMockupGrid
-        images={images}
-        isGenerating={isGenerating}
-        onDownloadZip={onDownloadZip}
-      />
-    )
-  }
+  const mockupProps = { images, isGenerating, onDownloadZip }
+
+  if (resolvedPlatform === 'etsy_product')      return <EtsyMockupGrid {...mockupProps} />
+  if (resolvedPlatform === 'shopify_product')   return <ShopifyMockupGrid {...mockupProps} />
+  if (resolvedPlatform === 'instagram_post')    return <InstagramPostMockup {...mockupProps} />
+  if (resolvedPlatform === 'instagram_story')   return <InstagramStoryMockup {...mockupProps} />
+  if (resolvedPlatform === 'tiktok')            return <TikTokMockup {...mockupProps} />
+  if (resolvedPlatform === 'facebook_post')     return <FacebookMockup {...mockupProps} />
 
   return (
     <div className="flex flex-col h-full gap-0 md:gap-4">

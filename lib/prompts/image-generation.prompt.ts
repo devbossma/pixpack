@@ -282,17 +282,24 @@ Use this as the authoritative description of the object in the reference image. 
     : ''
 
   return `
+NO TEXT IN OUTPUT IMAGE — READ THIS FIRST:
+The output image must contain ZERO visible text, words, letters, numbers, watermarks, logos, or typographic elements of any kind.
+This is an absolute rule that overrides all other instructions.
+Specifically: DO NOT render the word "Photoroom", DO NOT reproduce any diagonal text pattern, DO NOT add brand names, labels, captions, or any other readable characters anywhere in the image.
+The reference image contains a diagonal "Photoroom" watermark overlay — this is a digital artifact from the tool that removed the background, it is NOT a design element of the product and must not appear anywhere in your output.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 You are a world-class commercial product photographer and CGI compositor.
 Task: create a single photorealistic product photograph for ${platform}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REFERENCE IMAGE — CRITICAL INSTRUCTION:
-The attached image shows a product with its background removed by a tool called Photoroom.
-The image contains a tiled repeating diagonal watermark that reads "Photoroom" across it.
-THIS WATERMARK IS NOT PART OF THE PRODUCT.
+The attached image shows a product processed by a tool called Photoroom (background removal).
+The image has a diagonal repeating "Photoroom" text watermark overlaid across it — including over the product itself.
+THIS WATERMARK IS A DIGITAL ARTIFACT. IT IS NOT PART OF THE PRODUCT.
 DO NOT reproduce the word "Photoroom" anywhere in your output image.
-DO NOT use the diagonal "Photoroom" text pattern as a background texture or fill.
-The product itself is clean. Treat the reference as a pristine studio cutout with no watermark.
+DO NOT reproduce the diagonal repeating text pattern — not as background texture, not as surface detail, not as embossing, not in any form.
+Reconstruct the product's actual surface from what is visible beneath the watermark. The product's real surface has no text on it.
 ${verticalWarning}
 ${productHintBlock}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -322,6 +329,7 @@ Aspect ratio: ${aspectRatio}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 THE OUTPUT IMAGE MUST NOT CONTAIN:
+✗ ANY text, letters, words, numbers, or typographic characters — anywhere in the image
 ✗ The word "Photoroom" — anywhere in the image
 ✗ Any diagonal text pattern or repeated word used as background texture or fill
 ✗ A floating or hovering product (product must touch a surface)
