@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Star, Check } from 'lucide-react'
+import { Download, Loader2, ChevronLeft, ChevronRight, ShoppingCart, Check, Heart, RefreshCw, Truck, BadgeDollarSign, Search, Menu, User } from 'lucide-react'
 import type { GeneratedImage } from '@/types'
 import { getImageSrc } from '@/lib/image-src'
 
@@ -12,26 +12,27 @@ interface ShopifyMockupGridProps {
   onDownloadZip?: () => void
 }
 
-const SIZES   = ['XS', 'S', 'M', 'L', 'XL']
-const COLORS  = ['#1a1a1a', '#4A90D9', '#E8D5B7', '#C8A882']
-const PRICES  = ['$129.99', '$89.99', '$149.99', '$109.99']
-const REVIEWS = [4.8, 4.6, 4.9, 4.7]
-const REVIEW_COUNTS = [2841, 1203, 4512, 987]
+const SIZES         = ['S', 'M', 'L', 'XL']
+const PRICES        = ['$129.00', '$89.00', '$149.00', '$109.00']
+const TABS          = ['DETAIL', 'SHIPPING-RETURN', 'SIZE CHART', 'REVIEWS']
 
 export function ShopifyMockupGrid({ images, isGenerating, onDownloadZip }: ShopifyMockupGridProps) {
-  const [activeIndex, setActiveIndex] = useState(0)
+  const [activeIndex, setActiveIndex]   = useState(0)
   const [selectedSize, setSelectedSize] = useState('M')
-  const [selectedColor, setSelectedColor] = useState(0)
-  const [addedToCart, setAddedToCart] = useState(false)
-  const carouselRef = useRef<HTMLDivElement>(null)
+  const [qty, setQty]                   = useState(1)
+  const [wishlisted, setWishlisted]     = useState(false)
+  const [addedToCart, setAddedToCart]   = useState(false)
+  const [activeTab, setActiveTab]       = useState(0)
+  const carouselRef                     = useRef<HTMLDivElement>(null)
 
-  const sortedImages = [...images].sort((a, b) => a.variation - b.variation)
-  const totalSlots = isGenerating ? 4 : sortedImages.length
-  const displaySlots = Array.from({ length: 4 }).map((_, i) => sortedImages[i] || null)
+  const sortedImages  = [...images].sort((a, b) => a.variation - b.variation)
+  const totalSlots    = isGenerating ? 4 : sortedImages.length
+  const displaySlots  = Array.from({ length: 4 }).map((_, i) => sortedImages[i] || null)
 
   const activeImage = displaySlots[activeIndex]
-  const activeCopy = activeImage?.adCopy?.awareness || 'Premium Quality Product'
-  const activeDesc = activeImage?.adCopy?.consideration || 'Crafted with precision and care. Designed to elevate your everyday.'
+  const activeCopy  = activeImage?.adCopy?.awareness     || 'Premium Quality Product'
+  const activeDesc  = activeImage?.adCopy?.consideration || 'Crafted with precision and care. Designed to elevate your everyday experience with style and function.'
+  const price       = PRICES[activeIndex] ?? '$129.00'
 
   function handleScroll() {
     if (!carouselRef.current) return
@@ -49,123 +50,149 @@ export function ShopifyMockupGrid({ images, isGenerating, onDownloadZip }: Shopi
     setTimeout(() => setAddedToCart(false), 2000)
   }
 
-  const price       = PRICES[activeIndex]        ?? '$129.99'
-  const rating      = REVIEWS[activeIndex]       ?? 4.8
-  const reviewCount = REVIEW_COUNTS[activeIndex] ?? 2841
+  /* ── Trust badge data ───────────────────────────────────────── */
+  const trustBadges = [
+    { Icon: BadgeDollarSign, label: 'Satisfied or Money Back' },
+    { Icon: RefreshCw,       label: '30 Day Return Policy'    },
+    { Icon: Truck,           label: 'Guaranteed 5 Day Delivery' },
+  ]
+
+  /* ── Horizontal thumbnail strip (shared mobile + desktop) ───── */
+  function ThumbnailStrip() {
+    return (
+      <div className="flex items-center gap-2">
+        {displaySlots.map((slot, i) => {
+          const src = getImageSrc(slot)
+          return (
+            <button
+              key={i}
+              onClick={() => slot && setActiveIndex(i)}
+              className={`w-[72px] h-[72px] md:w-[80px] md:h-[80px] shrink-0 rounded-lg overflow-hidden border-2 transition-all flex items-center justify-center bg-gray-50
+                ${i === activeIndex ? 'border-[#1a1a1a]' : 'border-gray-200 hover:border-gray-400'}
+                ${!slot ? 'opacity-40 cursor-default' : ''}`}
+            >
+              {src
+                ? <img src={src} className="w-full h-full object-cover" draggable={false} alt="" />
+                : <Loader2 size={14} className="text-gray-300 animate-spin" />
+              }
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <div className="w-full h-full bg-white flex flex-col overflow-y-auto no-scrollbar md:rounded-2xl border border-gray-200 shadow-sm text-[#1a1a1a]">
 
-      {/* ─── SHOPIFY STORE HEADER ─────────────────────────────────── */}
-      <div className="border-b border-gray-200 shrink-0">
-        {/* Top bar */}
+      {/* ── HEADER ───────────────────────────────────────────────── */}
+      <div className="shrink-0 border-b border-gray-200">
+        {/* Announcement bar */}
         <div className="bg-[#1a1a1a] text-white text-center py-1.5 text-[11px] font-medium tracking-wide">
           Free shipping on orders over $75 · Limited time offer
         </div>
-        {/* Nav */}
+        {/* Nav bar */}
         <div className="flex items-center justify-between px-4 py-3 md:px-8">
-          <div className="text-[18px] font-black tracking-tight">PIXPACK</div>
-          <div className="hidden md:flex items-center gap-6 text-[13px] font-medium text-gray-600">
-            <span className="hover:text-black cursor-pointer">Collections</span>
-            <span className="hover:text-black cursor-pointer">New Arrivals</span>
-            <span className="hover:text-black cursor-pointer">Sale</span>
+          {/* Mobile hamburger */}
+          <button className="md:hidden text-gray-700"><Menu size={20} /></button>
+
+          {/* Logo */}
+          <div className="text-[18px] font-black tracking-tight flex items-center gap-1">
+            <span className="text-[#E53E3E] font-black text-[22px] leading-none border-l-4 border-[#E53E3E] pl-1">THE</span>
+            <span>SHOP</span>
           </div>
-          <div className="flex items-center gap-3">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <div className="relative">
-              <ShoppingCart size={20} />
-              <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#008060] flex items-center justify-center">
+
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-7 text-[13px] font-medium text-gray-600">
+            <span className="hover:text-black cursor-pointer transition-colors">Collections</span>
+            <span className="hover:text-black cursor-pointer transition-colors">New Arrivals</span>
+            <span className="hover:text-black cursor-pointer transition-colors">Sale</span>
+          </div>
+
+          {/* Icon row */}
+          <div className="flex items-center gap-3 text-gray-700">
+            <button className="hidden md:block hover:text-black transition-colors"><User size={19} /></button>
+            <button className="hover:text-black transition-colors"><Search size={19} /></button>
+            <button className="relative hover:text-black transition-colors">
+              <ShoppingCart size={19} />
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[#E53E3E] flex items-center justify-center">
                 <span className="text-white text-[8px] font-black">1</span>
-              </div>
-            </div>
+              </span>
+            </button>
           </div>
         </div>
+
         {/* Breadcrumb */}
-        <div className="hidden md:flex items-center gap-1 px-8 pb-2 text-[12px] text-gray-400">
-          <span className="hover:underline cursor-pointer">Home</span> <span>/</span>
-          <span className="hover:underline cursor-pointer">Products</span> <span>/</span>
-          <span className="text-gray-700 font-medium truncate max-w-[200px]">{activeCopy}</span>
+        <div className="hidden md:flex items-center gap-1.5 px-8 pb-2.5 text-[12px] text-gray-400">
+          <span className="hover:underline cursor-pointer hover:text-gray-600 transition-colors">Home</span>
+          <span>›</span>
+          <span className="text-gray-700 font-medium truncate max-w-[240px]">{activeCopy}</span>
         </div>
       </div>
 
-      {/* ─── PRODUCT AREA ────────────────────────────────────────── */}
-      <div className="flex flex-col lg:flex-row gap-6 lg:gap-10 p-4 lg:px-8 lg:py-8 pb-10 overflow-y-auto no-scrollbar">
+      {/* ── PRODUCT AREA ─────────────────────────────────────────── */}
+      <div className="flex flex-col lg:flex-row gap-0 lg:gap-12 p-4 md:p-6 lg:px-10 lg:py-8 flex-1">
 
-        {/* Left: Images */}
-        <div className="flex flex-col lg:flex-row gap-3 lg:flex-[1.2] w-full min-w-0">
+        {/* ─ LEFT: image + thumbnails ─────────────────────────────── */}
+        <div className="flex flex-col gap-3 lg:flex-[1.1] w-full min-w-0 shrink-0">
 
-          {/* Thumbnail strip (Desktop) */}
-          <div className="hidden lg:flex flex-col gap-2 w-[68px] shrink-0">
-            {displaySlots.map((slot, i) => {
-              const src = getImageSrc(slot)
-              return (
-                <button
-                  key={i}
-                  onClick={() => slot && setActiveIndex(i)}
-                  className={`w-[68px] h-[68px] rounded-lg overflow-hidden border-2 transition-all flex items-center justify-center bg-gray-50
-                    ${i === activeIndex ? 'border-[#1a1a1a]' : 'border-gray-200 hover:border-gray-400'} ${!slot ? 'opacity-40 cursor-default' : ''}`}
-                >
-                  {src
-                    ? <img src={src} className="w-full h-full object-cover" draggable={false} alt="" />
-                    : <Loader2 size={14} className="text-gray-300 animate-spin" />
-                  }
-                </button>
-              )
-            })}
-          </div>
+          {/* Main image — 1:1 square */}
+          <div className="relative w-full bg-[#f5f5f5] rounded-xl overflow-hidden" style={{ aspectRatio: '1/1' }}>
 
-          {/* Main image */}
-          <div className="relative flex-1 bg-gray-50 rounded-xl overflow-hidden" style={{ aspectRatio: '1/1' }}>
-
-            {/* Desktop */}
-            <div className="hidden lg:flex w-full h-full items-center justify-center relative">
+            {/* Desktop image with arrows */}
+            <div className="hidden lg:flex absolute inset-0 items-center justify-center">
               {activeIndex > 0 && (
-                <button onClick={handlePrev} className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full flex items-center justify-center shadow border border-gray-100 z-10 hover:bg-gray-50 text-black">
-                  <ChevronLeft size={20} />
+                <button
+                  onClick={handlePrev}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow border border-gray-100 flex items-center justify-center z-10 hover:bg-gray-50 transition-colors"
+                >
+                  <ChevronLeft size={19} />
                 </button>
               )}
               {activeIndex < totalSlots - 1 && displaySlots[activeIndex + 1] && (
-                <button onClick={handleNext} className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full flex items-center justify-center shadow border border-gray-100 z-10 hover:bg-gray-50 text-black">
-                  <ChevronRight size={20} />
+                <button
+                  onClick={handleNext}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-white rounded-full shadow border border-gray-100 flex items-center justify-center z-10 hover:bg-gray-50 transition-colors"
+                >
+                  <ChevronRight size={19} />
                 </button>
               )}
-
               {getImageSrc(activeImage) ? (
                 <AnimatePresence mode="popLayout">
                   <motion.img
                     key={activeIndex}
+                    src={getImageSrc(activeImage)!}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    src={getImageSrc(activeImage)!}
-                    className="w-full h-full object-cover"
+                    transition={{ duration: 0.18 }}
+                    className="absolute inset-0 w-full h-full object-cover"
                     draggable={false}
-                    alt={`Product ${activeIndex + 1}`}
+                    alt="Product"
                   />
                 </AnimatePresence>
               ) : (
                 <div className="flex flex-col items-center gap-3">
-                  <Loader2 size={32} className="text-[#008060] animate-spin" />
-                  <span className="text-sm text-gray-400 font-medium">Rendering…</span>
+                  <Loader2 size={30} className="text-gray-400 animate-spin" />
+                  <span className="text-sm text-gray-400">Rendering…</span>
                 </div>
               )}
             </div>
 
-            {/* Mobile carousel */}
+            {/* Mobile snap carousel */}
             <div
               ref={carouselRef}
               onScroll={handleScroll}
-              className="lg:hidden w-full h-full flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
+              className="lg:hidden absolute inset-0 flex overflow-x-auto snap-x snap-mandatory no-scrollbar"
             >
               {displaySlots.map((slot, i) => {
                 const src = getImageSrc(slot)
                 return (
-                  <div key={i} className="w-full h-full shrink-0 snap-center flex items-center justify-center bg-gray-50">
+                  <div key={i} className="w-full h-full shrink-0 snap-center flex items-center justify-center bg-[#f5f5f5]">
                     {src
                       ? <img src={src} className="w-full h-full object-cover" draggable={false} alt={`Product ${i + 1}`} />
                       : <div className="flex flex-col items-center gap-3">
-                          <Loader2 size={28} className="text-[#008060] animate-spin" />
+                          <Loader2 size={28} className="text-gray-400 animate-spin" />
                           <span className="text-xs text-gray-400">Rendering…</span>
                         </div>
                     }
@@ -175,84 +202,94 @@ export function ShopifyMockupGrid({ images, isGenerating, onDownloadZip }: Shopi
             </div>
 
             {/* Mobile dots */}
-            <div className="absolute bottom-3 left-0 right-0 flex lg:hidden justify-center gap-2 pointer-events-none z-10">
+            <div className="absolute bottom-3 left-0 right-0 flex lg:hidden justify-center gap-1.5 pointer-events-none z-10">
               {displaySlots.map((_, i) => (
-                <div key={i} className={`w-2 h-2 rounded-full transition-all ${i === activeIndex ? 'bg-[#1a1a1a] scale-125' : 'bg-gray-400'}`} />
+                <div key={i} className={`rounded-full transition-all ${i === activeIndex ? 'w-4 h-1.5 bg-[#1a1a1a]' : 'w-1.5 h-1.5 bg-gray-400'}`} />
               ))}
             </div>
+          </div>
+
+          {/* Thumbnail strip — horizontal, below main image */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <ThumbnailStrip />
           </div>
         </div>
 
-        {/* Right: Product Details */}
-        <div className="flex flex-col flex-1 lg:max-w-sm gap-4 lg:pt-1">
+        {/* ─ RIGHT: product details ───────────────────────────────── */}
+        <div className="flex flex-col flex-1 gap-4 lg:gap-3.5 mt-5 lg:mt-0 lg:pt-1 lg:max-w-[420px]">
 
-          {/* Brand & Rating */}
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-widest text-[#008060] mb-1">PixPack Store</div>
-            <h1 className="text-[22px] font-black leading-tight text-[#1a1a1a]">
-              <AnimatePresence mode="popLayout">
-                <motion.span
-                  key={activeIndex}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -4 }}
-                  transition={{ duration: 0.2 }}
-                  className="block"
-                >
-                  {activeCopy}
-                </motion.span>
-              </AnimatePresence>
-            </h1>
+          {/* In Stock badge */}
+          <div className="flex items-center gap-1.5 text-[13px] font-semibold text-green-600">
+            <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+            In Stock
           </div>
 
-          {/* Rating */}
-          <div className="flex items-center gap-2">
-            <div className="flex">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} size={14} className={i < Math.floor(rating) ? 'fill-[#FACC15] text-[#FACC15]' : 'text-gray-200 fill-gray-200'} />
-              ))}
+          {/* Product title */}
+          <h1 className="text-[20px] md:text-[22px] font-black leading-tight text-[#1a1a1a]">
+            <AnimatePresence mode="popLayout">
+              <motion.span
+                key={activeIndex}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18 }}
+                className="block"
+              >
+                {activeCopy}
+              </motion.span>
+            </AnimatePresence>
+          </h1>
+
+          {/* Short description */}
+          <AnimatePresence mode="popLayout">
+            <motion.p
+              key={activeIndex}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="text-[13px] text-gray-500 leading-relaxed"
+            >
+              {activeDesc}
+            </motion.p>
+          </AnimatePresence>
+
+          <div className="border-t border-gray-200" />
+
+          {/* Quantity */}
+          <div className="flex items-center gap-4">
+            <span className="text-[13px] font-semibold text-[#1a1a1a] w-16">Quantity</span>
+            <div className="flex items-center border border-gray-300 rounded-md overflow-hidden">
+              <button
+                onClick={() => setQty(q => Math.max(1, q - 1))}
+                className="w-9 h-9 flex items-center justify-center text-[18px] text-gray-500 hover:bg-gray-100 transition-colors font-light"
+              >
+                −
+              </button>
+              <span className="w-10 text-center text-[14px] font-semibold border-x border-gray-300 h-9 flex items-center justify-center">
+                {qty}
+              </span>
+              <button
+                onClick={() => setQty(q => q + 1)}
+                className="w-9 h-9 flex items-center justify-center text-[18px] text-gray-500 hover:bg-gray-100 transition-colors font-light"
+              >
+                +
+              </button>
             </div>
-            <span className="text-[13px] font-bold text-[#1a1a1a]">{rating}</span>
-            <span className="text-[13px] text-gray-400">({reviewCount.toLocaleString()} reviews)</span>
           </div>
 
-          {/* Price */}
-          <div className="flex items-baseline gap-2">
-            <span className="text-[28px] font-black">{price}</span>
-            <span className="text-[14px] text-gray-400 line-through">${(parseFloat(price.replace('$', '')) * 1.33).toFixed(2)}</span>
-            <span className="text-[11px] font-bold text-white bg-[#E53E3E] px-2 py-0.5 rounded-full">SAVE 25%</span>
-          </div>
-
-          {/* Color picker */}
-          <div>
-            <p className="text-[12px] font-bold uppercase tracking-widest text-gray-500 mb-2">Color</p>
-            <div className="flex gap-2">
-              {COLORS.map((color, i) => (
-                <button
-                  key={i}
-                  onClick={() => setSelectedColor(i)}
-                  className={`w-7 h-7 rounded-full transition-all border-2 ${i === selectedColor ? 'border-[#1a1a1a] scale-110 shadow-md' : 'border-gray-200'}`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Size picker */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] font-bold uppercase tracking-widest text-gray-500">Size</p>
-              <span className="text-[12px] text-[#008060] underline cursor-pointer font-medium">Size guide</span>
-            </div>
+          {/* Size */}
+          <div className="flex items-center gap-4">
+            <span className="text-[13px] font-semibold text-[#1a1a1a] w-16">Size</span>
             <div className="flex gap-2 flex-wrap">
               {SIZES.map(size => (
                 <button
                   key={size}
                   onClick={() => setSelectedSize(size)}
-                  className={`px-3 py-1.5 rounded-lg text-[13px] font-bold border-2 transition-all
+                  className={`min-w-[38px] px-3 py-1.5 rounded border text-[13px] font-semibold transition-all
                     ${selectedSize === size
-                      ? 'border-[#1a1a1a] bg-[#1a1a1a] text-white'
-                      : 'border-gray-200 hover:border-gray-400 text-[#1a1a1a]'
+                      ? 'border-[#E53E3E] bg-[#E53E3E] text-white'
+                      : 'border-gray-300 text-[#1a1a1a] hover:border-gray-500'
                     }`}
                 >
                   {size}
@@ -261,55 +298,106 @@ export function ShopifyMockupGrid({ images, isGenerating, onDownloadZip }: Shopi
             </div>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col gap-2.5 mt-2">
+          {/* Price */}
+          <div>
+            <div className="text-[26px] md:text-[28px] font-black text-[#1a1a1a] leading-none">
+              {price}
+            </div>
+            <p className="text-[12px] text-gray-400 mt-1 italic">Free shipping on order usd $150+</p>
+          </div>
+
+          {/* CTA row */}
+          <div className="flex items-center gap-3">
             <button
               onClick={handleAddToCart}
-              className={`w-full flex items-center justify-center gap-2 font-bold rounded-xl py-3.5 text-[15px] transition-all
-                ${addedToCart ? 'bg-[#008060] text-white' : 'bg-[#1a1a1a] hover:bg-gray-800 text-white'}`}
+              className={`flex-1 flex items-center justify-center gap-2 font-bold rounded-full py-3 text-[14px] transition-all
+                ${addedToCart ? 'bg-green-600 text-white' : 'bg-[#E53E3E] hover:bg-[#c53030] text-white'}`}
             >
-              {addedToCart ? <><Check size={18} /> Added to Cart</> : <><ShoppingCart size={18} /> Add to Cart</>}
+              {addedToCart
+                ? <><Check size={16} strokeWidth={2.5} /> Added!</>
+                : <><ShoppingCart size={16} /> ADD TO CART</>
+              }
             </button>
-            <button className="w-full bg-white border-2 border-[#1a1a1a] text-[#1a1a1a] font-bold rounded-xl py-3.5 text-[15px] hover:bg-gray-50 transition-colors">
-              Buy it now
+            <button
+              onClick={() => setWishlisted(w => !w)}
+              className="w-11 h-11 flex items-center justify-center rounded-full border border-gray-300 hover:border-gray-500 transition-colors"
+              aria-label="Wishlist"
+            >
+              <Heart size={18} className={wishlisted ? 'fill-[#E53E3E] text-[#E53E3E]' : 'text-gray-500'} strokeWidth={1.8} />
             </button>
-
-            {onDownloadZip && (
-              <button
-                onClick={onDownloadZip}
-                className="w-full bg-[#008060] hover:bg-[#006e52] text-white flex items-center justify-center gap-2 font-bold rounded-xl py-3.5 text-[15px] transition-colors"
-              >
-                <Download size={18} /> Download Your PixPack
-              </button>
-            )}
           </div>
 
-          {/* Product description */}
-          <div className="border-t border-gray-100 pt-4 mt-1">
-            <p className="text-[13px] font-bold text-gray-900 mb-1.5">Product Description</p>
-            <AnimatePresence mode="popLayout">
-              <motion.p
-                key={activeIndex}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-[13px] text-gray-600 leading-relaxed"
-              >
-                {activeDesc}
-              </motion.p>
-            </AnimatePresence>
-          </div>
-
-          {/* Trust badges */}
-          <div className="flex flex-wrap gap-3 text-[11px] text-gray-500 font-medium">
-            {['Free returns', 'Secure checkout', 'Ships in 1-2 days'].map(badge => (
-              <div key={badge} className="flex items-center gap-1">
-                <Check size={12} className="text-[#008060]" strokeWidth={3} />
-                {badge}
+          {/* Trust badges — bordered container, 3 columns */}
+          <div className="border border-gray-200 rounded-lg grid grid-cols-3 divide-x divide-gray-200 mt-1">
+            {trustBadges.map(({ Icon, label }) => (
+              <div key={label} className="flex flex-col items-center gap-1.5 py-3 px-2">
+                <Icon size={22} className="text-gray-500" strokeWidth={1.5} />
+                <span className="text-[10px] text-gray-500 text-center leading-tight font-medium">{label}</span>
               </div>
             ))}
           </div>
+
+          {/* Download */}
+          {onDownloadZip && (
+            <button
+              onClick={onDownloadZip}
+              className="w-full bg-[#008060] hover:bg-[#006e52] text-white flex items-center justify-center gap-2 font-bold rounded-full py-3 text-[14px] transition-colors"
+            >
+              <Download size={16} /> Download Your PixPack
+            </button>
+          )}
+
+          {/* ── Product tabs ──────────────────────────────────────── */}
+          <div className="border-t border-gray-200 mt-1 pt-4">
+            {/* Tab headers */}
+            <div className="flex border-b border-gray-200">
+              {TABS.map((tab, i) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(i)}
+                  className={`px-3 py-2 text-[11px] font-bold tracking-wide transition-all whitespace-nowrap
+                    ${activeTab === i
+                      ? 'bg-[#1a1a1a] text-white'
+                      : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+            {/* Tab content */}
+            <div className="py-4 text-[13px] text-gray-500 leading-relaxed">
+              {activeTab === 0 && (
+                <AnimatePresence mode="popLayout">
+                  <motion.p key={activeIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                    {activeDesc}
+                  </motion.p>
+                </AnimatePresence>
+              )}
+              {activeTab === 1 && <p>Free standard shipping on orders over $150. Returns accepted within 30 days of delivery in original condition.</p>}
+              {activeTab === 2 && (
+                <div className="grid grid-cols-4 gap-px border border-gray-200 text-center text-[12px]">
+                  {['Size', 'Bust', 'Waist', 'Hip'].map(h => (
+                    <div key={h} className="bg-gray-100 font-bold py-1.5 px-2">{h}</div>
+                  ))}
+                  {[['S','84cm','66cm','90cm'],['M','88cm','70cm','94cm'],['L','92cm','74cm','98cm'],['XL','96cm','78cm','102cm']].map(row =>
+                    row.map((cell, ci) => <div key={ci} className="py-1.5 px-2 border-t border-gray-100">{cell}</div>)
+                  )}
+                </div>
+              )}
+              {activeTab === 3 && (
+                <div className="flex flex-col gap-2">
+                  {[['Sarah M.','Perfect fit and great quality! ⭐⭐⭐⭐⭐'],['James K.','Exactly as described, fast shipping. ⭐⭐⭐⭐⭐']].map(([name, text]) => (
+                    <div key={name} className="border border-gray-100 rounded-lg p-3">
+                      <p className="font-semibold text-[12px] text-gray-700 mb-0.5">{name}</p>
+                      <p>{text}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
