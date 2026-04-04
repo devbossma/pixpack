@@ -86,12 +86,16 @@ export function FacebookMockup({ images, isGenerating, onDownloadZip }: Facebook
               </div>
               <div>
                 <div className="flex items-center gap-1">
-                  <span className="text-[14px] font-bold">PixPack Official</span>
-                  <span className="text-[11px] text-white bg-[#1877F2] px-1.5 py-0.5 rounded font-bold">Sponsored</span>
+                  <span className="text-[14px] font-bold leading-tight">PixPack Official</span>
+                  {/* Verified badge */}
+                  <svg viewBox="0 0 16 16" width="14" height="14" fill="#1877F2">
+                    <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zm3.5 5.5L7 10 4.5 7.5 3 9l4 4 6-7-1.5-1.5z"/>
+                  </svg>
                 </div>
                 <div className="flex items-center gap-1 text-[12px] text-[#65676B]">
-                  <Globe size={11} />
                   <span>Sponsored</span>
+                  <span>·</span>
+                  <Globe size={11} />
                 </div>
               </div>
             </div>
@@ -112,7 +116,8 @@ export function FacebookMockup({ images, isGenerating, onDownloadZip }: Facebook
                 transition={{ duration: 0.2 }}
                 className="text-[14px] text-[#050505] leading-snug"
               >
-                {activeCopy}
+                {activeCopy}{' '}
+                <span className="text-[#65676B] cursor-pointer hover:underline text-[13px]">See more</span>
               </motion.p>
             </AnimatePresence>
           </div>
@@ -192,7 +197,7 @@ export function FacebookMockup({ images, isGenerating, onDownloadZip }: Facebook
 
           {/* CTA banner */}
           <div className="flex items-center justify-between px-3 py-2.5 border-t border-[#CED0D4] bg-[#F0F2F5]">
-            <div className="flex flex-col gap-0.5">
+            <div className="flex flex-col gap-0.5 min-w-0 flex-1 mr-3">
               <span className="text-[11px] text-[#65676B] uppercase tracking-wide font-medium">pixpack.co</span>
               <AnimatePresence mode="popLayout">
                 <motion.span
@@ -201,33 +206,53 @@ export function FacebookMockup({ images, isGenerating, onDownloadZip }: Facebook
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="text-[13px] font-bold text-[#050505] leading-tight"
+                  className="text-[13px] font-bold text-[#050505] leading-tight truncate"
                 >
                   {activeDesc}
                 </motion.span>
               </AnimatePresence>
+              {/* Promo tag */}
+              <div className="flex items-center gap-1 mt-0.5">
+                <svg viewBox="0 0 16 16" width="11" height="11" fill="#1C7A37">
+                  <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0zm3.28 5.72l-4 4a.75.75 0 0 1-1.06 0l-2-2a.75.75 0 1 1 1.06-1.06L6.75 8.19l3.47-3.47a.75.75 0 1 1 1.06 1.06z"/>
+                </svg>
+                <span className="text-[11px] text-[#1C7A37] font-semibold">Get 20% OFF — Limited Time</span>
+              </div>
             </div>
-            <button className="bg-[#E4E6EB] hover:bg-[#D8DADF] text-[#050505] font-semibold text-[13px] px-3 py-1.5 rounded-md transition-colors shrink-0">
+            <button className="bg-[#1877F2] hover:bg-[#166FE5] text-white font-semibold text-[13px] px-3.5 py-2 rounded-md transition-colors shrink-0 whitespace-nowrap">
               Shop now
             </button>
           </div>
 
           {/* Reaction counts */}
           <div className="flex items-center justify-between px-3 py-1.5 text-[13px] text-[#65676B]">
-            <div className="flex items-center gap-1">
-              <div className="flex">
-                <div className="w-4 h-4 rounded-full bg-[#1877F2] flex items-center justify-center z-10">
-                  <ThumbsUp size={9} className="text-white fill-white" />
+            <div className="flex items-center gap-1.5 cursor-pointer hover:underline">
+              {/* Stacked reaction badges */}
+              <div className="flex items-center">
+                <div className="w-[18px] h-[18px] rounded-full bg-[#1877F2] flex items-center justify-center ring-[1.5px] ring-white z-20">
+                  <ThumbsUp size={10} className="text-white fill-white" strokeWidth={0} />
                 </div>
-                <div className="w-4 h-4 rounded-full bg-[#F02849] flex items-center justify-center -ml-1">
-                  <svg viewBox="0 0 16 16" width="9" height="9" fill="white"><path d="M8 0C3.6 0 0 3.1 0 7s3.6 7 8 7 8-3.1 8-7-3.6-7-8-7zm0 4.7c1.7 0 3.1 1.4 3.1 3.1S9.7 10.9 8 10.9 4.9 9.5 4.9 7.8 6.3 4.7 8 4.7z"/></svg>
+                <div className="w-[18px] h-[18px] rounded-full bg-[#F7B928] flex items-center justify-center ring-[1.5px] ring-white -ml-1 z-10">
+                  {/* Love reaction heart */}
+                  <svg viewBox="0 0 16 16" width="10" height="10" fill="white">
+                    <path d="M8 13.5C8 13.5 2 9.2 2 5.5A3.5 3.5 0 0 1 8 3.1 3.5 3.5 0 0 1 14 5.5c0 3.7-6 8-6 8z"/>
+                  </svg>
+                </div>
+                <div className="w-[18px] h-[18px] rounded-full bg-[#F02849] flex items-center justify-center ring-[1.5px] ring-white -ml-1 z-0">
+                  {/* Haha reaction */}
+                  <svg viewBox="0 0 16 16" width="10" height="10" fill="white">
+                    <circle cx="8" cy="8" r="7" fill="#F02849"/>
+                    <circle cx="5.5" cy="6.5" r="1.2" fill="white"/>
+                    <circle cx="10.5" cy="6.5" r="1.2" fill="white"/>
+                    <path d="M5 10c.8 1.2 2 1.8 3 1.8s2.2-.6 3-1.8" stroke="white" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+                  </svg>
                 </div>
               </div>
               <span>{(reactions + (liked ? 1 : 0)).toLocaleString()}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span>{comments.toLocaleString()} comments</span>
-              <span>{shares.toLocaleString()} shares</span>
+              <span className="cursor-pointer hover:underline">{comments.toLocaleString()} comments</span>
+              <span className="cursor-pointer hover:underline">{shares.toLocaleString()} shares</span>
             </div>
           </div>
 
@@ -244,7 +269,7 @@ export function FacebookMockup({ images, isGenerating, onDownloadZip }: Facebook
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md hover:bg-[#F0F2F5] transition-colors text-[13px] font-semibold ${action.active ? 'text-[#1877F2]' : 'text-[#65676B]'}`}
               >
                 {action.icon}
-                <span className="hidden md:inline">{action.label}</span>
+                <span>{action.label}</span>
               </button>
             ))}
           </div>
