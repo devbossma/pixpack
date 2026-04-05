@@ -272,12 +272,12 @@ export default function HeroSection() {
 
         {/* 2 ── Headline (single h1 for SEO) */}
         <h1
-          aria-label="AI product ad generator: turn one photo into a full Instagram, TikTok, Facebook or Shopify ad pack while your coffee brews"
+          aria-label="AI product ad generator: turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify — with copy — while your coffee brews"
           className="text-center space-y-0.5 max-w-3xl"
         >
           {/* Visually-hidden static text — read by Google, not visible */}
           <span className="sr-only">
-            AI product ad generator — one photo to a full ad pack while your coffee brews
+            AI product ad generator — turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify, with platform-native copy, while your coffee brews. Free. No account needed.
           </span>
 
           {/* Line 1 — static */}

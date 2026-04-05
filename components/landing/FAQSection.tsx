@@ -6,33 +6,58 @@ import { Plus } from 'lucide-react'
 const FAQS = [
   {
     k: 'conversion-engine',
-    q: 'How is this different from a simple image generator?',
-    a: 'Simple generators give you generic images. PixPack is a marketing engine. We analyze your product and audience to generate a full A/B testing kit: 4 visual angles and 3 funnel-staged ad copies (Awareness, Consideration, Conversion), precisely adapted to individual markets like Morocco, Brazil, or Indonesia.',
+    q: 'How is PixPack different from a regular AI image generator?',
+    a: 'Simple generators give you generic images. PixPack is a full marketing engine. It analyzes your product and target audience to generate a complete A/B testing kit: 4 visual angles (Lifestyle, Hero, Context, Closeup) each paired with 3 funnel-staged ad copies (Awareness, Consideration, Conversion) — precisely adapted to individual markets like Morocco, Brazil, or South Korea.',
   },
   {
-    k: 'runtime',
-    q: 'How long does a full generation take?',
-    a: 'While our marketing says 60 seconds (total processing time), the end-to-end wait time—from background removal to 12-variant export—is typically under 3 minutes. It\'s faster than waiting for a freelance copywriter to reply to your email.',
+    k: 'how-it-works',
+    q: 'How does PixPack generate product images?',
+    a: 'PixPack uses Google Imagen 3 via Gemini Flash to place your product in realistic, culturally relevant lifestyle scenes. Upload one photo, choose your target market and platform, and the AI generates platform-native images with matching ad copy in under 3 minutes — no Photoshop, no studio, no agency.',
+  },
+  {
+    k: 'platforms',
+    q: 'Which platforms does PixPack support?',
+    a: 'PixPack generates images at native resolution for: Instagram Post (1080×1080), Instagram Story (1080×1920), TikTok Ads (1080×1920), Facebook Post (1200×630), Shopify Product (800×800), and Etsy Product (2700×2025). Each format is sized and composed to platform spec.',
   },
   {
     k: 'pack-contents',
     q: 'What exactly is in the ZIP download?',
-    a: 'Your pack includes 6 platform-perfect images (at 1080p, 1200p, etc.), a structured text file with up to 12 distinct ad copy combinations, and a ready-to-use Shopify product description. Everything is labelled for easy import into your ad manager.',
+    a: 'Your pack includes 6 platform-sized images, a structured text file with up to 12 distinct ad copy combinations (4 visual angles × 3 funnel stages), and a ready-to-paste Shopify product description with SEO-optimised title and bullet points. Everything is labelled for direct import into Meta Ads Manager, TikTok Ads, or Shopify.',
   },
   {
-    k: 'platforms',
-    q: 'Does it support my specific platform?',
-    a: 'We currently optimize for Instagram (Post + Story), TikTok Ads, Facebook (Post + Feed), Shopify Product Pages, and Etsy Product Listings. More professional dimensions are added to our beta weekly.',
+    k: 'markets',
+    q: 'Which countries and markets does PixPack support?',
+    a: 'PixPack supports 20+ global markets including Morocco, UAE, France, Brazil, Nigeria, South Korea, India, Indonesia, USA, UK, and more. Each market gets culturally specific scenes, lighting, colour palette, and ad copy written in the local language and tone.',
   },
   {
-    k: 'beta-status',
-    q: 'Is it really free? Do I need an account?',
-    a: 'During this public beta phase: yes, it is 100% free with no account required. Upload, configure, and download. We only ask for an email to send your secure download link.',
+    k: 'runtime',
+    q: 'How long does it take to generate a content pack?',
+    a: 'PixPack delivers your full pack — 4 images and 12 ad copy variants — in under 3 minutes. Background removal, AI scene generation, copy writing, and export all happen in a single automated pipeline. No waiting on freelancers or agencies.',
   },
   {
     k: 'technical-quality',
-    q: 'What model powers the image generation?',
-    a: 'PixPack leverages Google Imagen 3 via Gemini Flash for state-of-the-art visual quality, combined with our proprietary Cultural IQ layer to ensure your products look authentic in every local market.',
+    q: 'What AI model powers the image generation?',
+    a: 'PixPack uses Google Imagen 3 via Gemini Flash for state-of-the-art photorealistic quality, layered with a proprietary Cultural IQ system that adapts scenes, props, and copy to your chosen market. The result looks shot on location, not generated.',
+  },
+  {
+    k: 'beta-status',
+    q: 'Is PixPack free? Do I need an account?',
+    a: 'PixPack is 100% free during its public beta — no account, no credit card, no sign-up required. Upload your product photo, configure your audience and platform, then download your pack immediately. We only ask for an email to send your secure download link.',
+  },
+  {
+    k: 'etsy-shopify',
+    q: 'Can I use PixPack for Etsy and Shopify product listings?',
+    a: 'Yes. PixPack generates images at Etsy\'s recommended 2700×2025 resolution and Shopify\'s 800×800 product format. Your ZIP also includes a ready-to-paste Shopify product description with an SEO-optimised title, feature bullet points, and full product copy — import it directly into your store.',
+  },
+  {
+    k: 'input-formats',
+    q: 'What image formats and sizes does PixPack accept?',
+    a: 'PixPack accepts JPG, PNG, and WEBP files up to 10 MB. For best results, upload a clean product photo — ideally on a plain or simple background. Our background removal AI works on any input, but cleaner source photos produce sharper outputs.',
+  },
+  {
+    k: 'paid-ads',
+    q: 'Can I use the generated images in paid ads on Meta and TikTok?',
+    a: 'Yes. All images generated by PixPack are yours to use commercially, including in paid advertising on Meta Ads (Facebook and Instagram), TikTok Ads, Google Shopping, and any other platform. Your ZIP is structured and labelled for direct import into Meta Ads Manager and TikTok Ads Manager.',
   },
 ]
 
@@ -57,7 +82,7 @@ export function FAQSection() {
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: '-40px' }} transition={{ duration: 0.6 }}
           className="divide-y divide-[var(--border)] border border-[var(--border)] rounded-2xl overflow-hidden">
-          {FAQS.map(({ k, q, a }, i) => (
+          {FAQS.map(({ k, q, a }) => (
             <div key={k}>
               <button
                 onClick={() => setOpen(open === k ? null : k)}

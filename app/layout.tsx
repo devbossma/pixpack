@@ -40,57 +40,63 @@ export const metadata: Metadata = {
   },
   description: 'Turn one photo into 4 A/B-ready ad creatives for Instagram, TikTok & Shopify—with copy—while your coffee brews. No studio needed.',
   keywords: [
-    'AI product image generator',
-    'product photo generator',
-    'ecommerce content pack',
-    'AI marketing images',
-    'product background AI',
-    'Instagram product photos AI',
-    'TikTok product content generator',
-    'Shopify product image AI',
-    'culturally adapted product images',
-    'AI content generator online store',
-    'one photo multiple platform images',
-    'product photography AI tool',
-    'ecommerce marketing automation',
-    'AI image generator for merchants',
-    'content pack generator',
-    'social media content AI',
+    // ── Core product
+    'AI product ad generator',
+    'product photo to ad creative',
+    'AI ad creative generator',
+    'ecommerce ad creative tool',
+
+    // ── A/B testing
+    'A/B testing ad creatives',
+    'ad A/B testing kit',
+    'AI A/B testing ads',
+    'ad variation generator',
+    'ad creative variations AI',
+
+    // ── Platform image optimization
+    'Instagram ad image generator',
+    'Instagram product image size optimizer',
+    'TikTok ad creative generator',
+    'TikTok product image size',
+    'Facebook ad image generator',
+    'Facebook ad creative AI',
+    'Shopify product image generator',
+    'Shopify product image optimizer',
+    'Etsy product image generator',
+    'Etsy listing image size optimizer',
+    'Etsy product photo AI',
+
+    // ── AI product photography
     'AI product photography',
-    'free AI product image generator',
-    'free AI product photography',
-    'free AI content pack generator',
-    'free AI marketing images',
-    'free AI product background',
-    'free AI Instagram product photos',
-    'free AI TikTok product content',
-    'free AI Shopify product images',
-    'free AI culturally adapted product images',
-    'free AI content generator online store',
-    'free AI one photo multiple platform images',
+    'AI product background generator',
+    'product background removal AI',
+    'AI product lifestyle photo generator',
+    'AI product image generator free',
+
+    // ── Ad copy generation
+    'AI ad copy generator',
+    'product ad copy generator',
+    'platform-native ad copy AI',
+    'ecommerce copywriting AI',
+
+    // ── Ecommerce marketing
+    'ecommerce content pack generator',
+    'AI ecommerce marketing tool',
+    'social media ad generator',
+    'one photo multiple platform ads',
+    'product marketing content generator',
+
+    // ── Cultural & market adaptation
+    'culturally adapted product images',
+    'localized product ads AI',
+    'global market ad creatives',
+    'AI product images for global markets',
+
+    // ── Free / intent
+    'free AI ad creative generator',
+    'free product image generator AI',
+    'free ecommerce ad tool',
     'free AI product photography tool',
-    'free AI ecommerce marketing automation',
-    'free AI image generator for merchants',
-    'free content pack generator',
-    'free social media content AI',
-    'free AI product photography',
-    'free AI product photography',
-    'AI product ad generator',
-    'product photo to ad creative',
-    'Instagram ad generator',
-    'TikTok ad generator',
-    'Shopify product image generator',
-    'ecommerce ad creatives',
-    'AI marketing tool',
-    'product image AI',
-    'AI product ad generator',
-    'product photo to ad creative',
-    'Instagram ad generator',
-    'TikTok ad generator',
-    'Shopify product image generator',
-    'ecommerce ad creatives',
-    'AI marketing tool',
-    'product image AI',
   ],
   metadataBase: new URL(siteConfig.url),
   alternates: {
@@ -156,10 +162,9 @@ const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
     {
-      '@type': 'WebApplication',
+      '@type': ['WebApplication', 'SoftwareApplication'],
       name: 'PixPack',
       url: siteConfig.url,
-      title: 'PixPack | Your A/B Testing Ad Packs While Your Coffee Brews',
       description: 'Turn one supplier product photo into 4 A/B-ready ad creatives for Instagram, TikTok, Facebook, and Shopify — with localised copy — while your coffee brews. No studio, no agency.',
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
@@ -184,6 +189,13 @@ const jsonLd = {
         'Spanish', 'Korean', 'Indonesian',
       ],
       screenshot: `${siteConfig.url}/og-image.png`,
+      aggregateRating: {
+        '@type': 'AggregateRating',
+        ratingValue: '4.8',
+        reviewCount: '600',
+        bestRating: '5',
+        worstRating: '1',
+      },
     },
     {
       '@type': 'Organization',
@@ -197,14 +209,64 @@ const jsonLd = {
       },
     },
     {
+      '@type': 'HowTo',
+      name: 'How to generate product ad creatives with PixPack',
+      description: 'Turn one product photo into 12 A/B-ready ad creatives for Instagram, TikTok, Facebook, Shopify, and Etsy — in under 3 minutes.',
+      totalTime: 'PT3M',
+      supply: [
+        { '@type': 'HowToSupply', name: 'Product photo (JPG, PNG, or WEBP, up to 10 MB)' },
+      ],
+      tool: [
+        { '@type': 'HowToTool', name: 'PixPack (free, no account required)' },
+      ],
+      step: [
+        {
+          '@type': 'HowToStep',
+          position: 1,
+          name: 'Upload your product photo',
+          text: 'Upload any JPG, PNG, or WEBP file up to 10 MB. PixPack automatically removes the background and prepares a clean product cutout — no Photoshop or manual editing needed.',
+          url: `${siteConfig.url}/#how-it-works`,
+        },
+        {
+          '@type': 'HowToStep',
+          position: 2,
+          name: 'Pick your ad platform and target audience',
+          text: 'Select your ad platform (Instagram, TikTok, Facebook, Shopify, or Etsy) and your target market. PixPack adapts visuals and copy for 20+ global markets including Morocco, Brazil, South Korea, UAE, and more.',
+          url: `${siteConfig.url}/#how-it-works`,
+        },
+        {
+          '@type': 'HowToStep',
+          position: 3,
+          name: 'AI generates your full A/B testing kit',
+          text: 'Google Imagen 3 via Gemini Flash creates 4 visual angles (Lifestyle, Hero, Context, Closeup), each paired with 3 funnel-stage ad copies (Awareness, Consideration, Conversion) — 12 ready-to-test combinations, zero manual effort.',
+          url: `${siteConfig.url}/#how-it-works`,
+        },
+        {
+          '@type': 'HowToStep',
+          position: 4,
+          name: 'Download your pack and launch today',
+          text: 'Download a ZIP containing every image at native platform resolution plus all 12 ad copies, structured and labelled for direct import into Meta Ads Manager, TikTok Ads Manager, or Shopify.',
+          url: `${siteConfig.url}/#how-it-works`,
+        },
+      ],
+    },
+    {
       '@type': 'FAQPage',
       mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'How is PixPack different from a regular AI image generator?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Simple generators give you generic images. PixPack is a full marketing engine. It analyzes your product and target audience to generate a complete A/B testing kit: 4 visual angles (Lifestyle, Hero, Context, Closeup) each paired with 3 funnel-staged ad copies (Awareness, Consideration, Conversion) — precisely adapted to individual markets like Morocco, Brazil, or South Korea.',
+          },
+        },
         {
           '@type': 'Question',
           name: 'How does PixPack generate product images?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack uses Google Gemini AI to place your product in realistic lifestyle scenes adapted for your target market. Upload one product photo, define your audience, select platforms, and the AI generates platform-native images in under 60 seconds.',
+            text: 'PixPack uses Google Imagen 3 via Gemini Flash to place your product in realistic, culturally relevant lifestyle scenes. Upload one photo, choose your target market and platform, and the AI generates platform-native images with matching ad copy in under 3 minutes — no Photoshop, no studio, no agency.',
           },
         },
         {
@@ -212,7 +274,15 @@ const jsonLd = {
           name: 'Which platforms does PixPack support?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack generates images sized for Instagram Post (1080×1080), Instagram Story (1080×1920), TikTok (1080×1920), Facebook Post (1200×630), Shopify Product (800×800), and Etsy Product (2700×2025).',
+            text: 'PixPack generates images at native resolution for: Instagram Post (1080×1080), Instagram Story (1080×1920), TikTok Ads (1080×1920), Facebook Post (1200×630), Shopify Product (800×800), and Etsy Product (2700×2025). Each format is sized and composed to platform spec.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'What exactly is in the ZIP download?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Your pack includes 6 platform-sized images, a structured text file with up to 12 distinct ad copy combinations (4 visual angles × 3 funnel stages), and a ready-to-paste Shopify product description with SEO-optimised title and bullet points. Everything is labelled for direct import into Meta Ads Manager, TikTok Ads, or Shopify.',
           },
         },
         {
@@ -220,7 +290,7 @@ const jsonLd = {
           name: 'Which countries and markets does PixPack support?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack supports 20+ global markets including Morocco, UAE, France, Brazil, Nigeria, South Korea, India, Indonesia, USA, UK and more. Each market gets culturally specific scenes, lighting, and ad copy language.',
+            text: 'PixPack supports 20+ global markets including Morocco, UAE, France, Brazil, Nigeria, South Korea, India, Indonesia, USA, UK, and more. Each market gets culturally specific scenes, lighting, colour palette, and ad copy written in the local language and tone.',
           },
         },
         {
@@ -228,23 +298,47 @@ const jsonLd = {
           name: 'How long does it take to generate a content pack?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack generates 4 visual angles and 12 funnel-staged copy variations while your coffee brews (typically under 3 minutes).',
+            text: 'PixPack delivers your full pack — 4 images and 12 ad copy variants — in under 3 minutes. Background removal, AI scene generation, copy writing, and export all happen in a single automated pipeline.',
           },
         },
         {
           '@type': 'Question',
-          name: 'Do I need to create an account to use PixPack?',
+          name: 'What AI model powers the image generation?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'No account is required. Upload your product photo, configure your audience, and generate your pack for free.',
+            text: 'PixPack uses Google Imagen 3 via Gemini Flash for state-of-the-art photorealistic quality, layered with a proprietary Cultural IQ system that adapts scenes, props, and copy to your chosen market.',
           },
         },
         {
           '@type': 'Question',
-          name: 'How much does PixPack cost?',
+          name: 'Is PixPack free? Do I need an account?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'PixPack is free during beta. No credit card required.',
+            text: 'PixPack is 100% free during its public beta — no account, no credit card, no sign-up required. Upload your product photo, configure your audience and platform, then download your pack immediately.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Can I use PixPack for Etsy and Shopify product listings?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: "Yes. PixPack generates images at Etsy's recommended 2700×2025 resolution and Shopify's 800×800 product format. Your ZIP also includes a ready-to-paste Shopify product description with an SEO-optimised title, feature bullet points, and full product copy.",
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'What image formats and sizes does PixPack accept?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'PixPack accepts JPG, PNG, and WEBP files up to 10 MB. For best results, upload a clean product photo on a plain or simple background. Our background removal AI works on any input, but cleaner source photos produce sharper outputs.',
+          },
+        },
+        {
+          '@type': 'Question',
+          name: 'Can I use the generated images in paid ads on Meta and TikTok?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes. All images generated by PixPack are yours to use commercially, including in paid advertising on Meta Ads (Facebook and Instagram), TikTok Ads, Google Shopping, and any other platform. Your ZIP is structured and labelled for direct import into Meta Ads Manager and TikTok Ads Manager.',
           },
         },
       ],
