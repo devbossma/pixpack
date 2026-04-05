@@ -9,10 +9,10 @@
  */
 
 import sharp from 'sharp'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createVertexClient } from '../vertex-client'
 import { buildAnalyzePrompt } from '../prompts/analyze.prompt'
 import type { ProductAnalysis, AnalyzeResponse } from '../types'
+import { createSupabaseAdmin } from '../supabase'
 
 export interface AnalyzeInput {
   file: File
@@ -67,7 +67,7 @@ async function cleanWatermark(watermarkedBuffer: ArrayBuffer): Promise<Buffer> {
   // Walk every pixel: zero out RGB where Photoroom marked the pixel as background
   for (let i = 0; i < data.length; i += 4) {
     if (data[i + 3] < ALPHA_BACKGROUND_THRESHOLD) {
-      data[i]     = 0  // R
+      data[i] = 0  // R
       data[i + 1] = 0  // G
       data[i + 2] = 0  // B
       data[i + 3] = 0  // A — fully transparent, no color data
@@ -128,10 +128,7 @@ async function extractBackground(file: File): Promise<string> {
 
   const filename = `extracted-${crypto.randomUUID()}.png`
 
-  const supabase = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  )
+  const supabase = createSupabaseAdmin()
 
   const { error: uploadError } = await supabase.storage
     .from('pack_assets')

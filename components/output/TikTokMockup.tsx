@@ -11,10 +11,10 @@ interface TikTokMockupProps {
   onDownloadZip?: () => void
 }
 
-const FAKE_LIKES    = ['124.8K', '89.3K', '201.5K', '56.2K']
-const FAKE_COMMENTS = ['4.2K',   '1.8K',  '9.1K',   '2.3K']
-const FAKE_SAVES    = ['8.1K',   '3.4K',  '15.2K',  '2.7K']
-const FAKE_SHARES   = ['12.4K',  '8.7K',  '31.2K',  '5.9K']
+const FAKE_LIKES = ['124.8K', '89.3K', '201.5K', '56.2K']
+const FAKE_COMMENTS = ['4.2K', '1.8K', '9.1K', '2.3K']
+const FAKE_SAVES = ['8.1K', '3.4K', '15.2K', '2.7K']
+const FAKE_SHARES = ['12.4K', '8.7K', '31.2K', '5.9K']
 const SOUNDS = [
   'Original Sound — pixpack_official',
   'Trending Audio — Saberlabs',
@@ -75,7 +75,7 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
   const [activeIndex, setActiveIndex] = useState(0)
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
-  const mobileScrollRef  = useRef<HTMLDivElement>(null)
+  const mobileScrollRef = useRef<HTMLDivElement>(null)
   const desktopScrollRef = useRef<HTMLDivElement>(null)
 
   const sortedImages = [...images].sort((a, b) => a.variation - b.variation)
@@ -83,7 +83,7 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
   const displaySlots = Array.from({ length: 4 }).map((_, i) => sortedImages[i] || null)
 
   const activeImage = displaySlots[activeIndex]
-  const activeCopy  = activeImage?.adCopy?.awareness || 'You need to see this 👀 #viral #trending'
+  const activeCopy = activeImage?.adCopy?.awareness || 'You need to see this 👀 #viral #trending'
 
   // Vertical scroll snap handler — shared logic
   function handleVerticalScroll(ref: React.RefObject<HTMLDivElement | null>) {
@@ -100,10 +100,10 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
     ref.current.scrollTo({ top: idx * ref.current.clientHeight, behavior: 'smooth' })
   }
 
-  const likes    = FAKE_LIKES[activeIndex]    ?? '124.8K'
+  const likes = FAKE_LIKES[activeIndex] ?? '124.8K'
   const comments = FAKE_COMMENTS[activeIndex] ?? '4.2K'
-  const saves    = FAKE_SAVES[activeIndex]    ?? '8.1K'
-  const shares   = FAKE_SHARES[activeIndex]   ?? '12.4K'
+  const saves = FAKE_SAVES[activeIndex] ?? '8.1K'
+  const shares = FAKE_SHARES[activeIndex] ?? '12.4K'
 
   return (
     <div className="w-full h-full bg-black flex flex-col overflow-hidden md:rounded-2xl text-white">
@@ -121,14 +121,14 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
           className="flex-1 min-h-0 overflow-y-scroll snap-y snap-mandatory no-scrollbar"
         >
           {displaySlots.map((slot, i) => {
-            const src        = getImageSrc(slot)
-            const slotCopy   = slot?.adCopy?.awareness || activeCopy
-            const slotSound  = SOUNDS[i] ?? SOUNDS[0]
-            const slotLikes  = FAKE_LIKES[i]    ?? '124.8K'
-            const slotCmts   = FAKE_COMMENTS[i] ?? '4.2K'
-            const slotSaves  = FAKE_SAVES[i]    ?? '8.1K'
-            const slotShares = FAKE_SHARES[i]   ?? '12.4K'
-            const isActive   = i === activeIndex
+            const src = getImageSrc(slot)
+            const slotCopy = slot?.adCopy?.awareness || activeCopy
+            const slotSound = SOUNDS[i] ?? SOUNDS[0]
+            const slotLikes = FAKE_LIKES[i] ?? '124.8K'
+            const slotCmts = FAKE_COMMENTS[i] ?? '4.2K'
+            const slotSaves = FAKE_SAVES[i] ?? '8.1K'
+            const slotShares = FAKE_SHARES[i] ?? '12.4K'
+            const isActive = i === activeIndex
 
             return (
               <div key={i} className="w-full h-full snap-start relative bg-black flex-none overflow-hidden">
@@ -136,15 +136,15 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
                 {/* Background image */}
                 {src
                   ? <img
-                      src={src}
-                      className="absolute inset-0 w-full h-full object-cover"
-                      draggable={false}
-                      alt={`Variation ${i + 1}`}
-                    />
+                    src={src}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    draggable={false}
+                    alt={`Variation ${i + 1}`}
+                  />
                   : <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
-                      <Loader2 size={36} className="text-white animate-spin" />
-                      <span className="text-sm text-white/60 mt-3">Rendering…</span>
-                    </div>
+                    <Loader2 size={36} className="text-white animate-spin" />
+                    <span className="text-sm text-white/60 mt-3">Rendering…</span>
+                  </div>
                 }
 
                 {/* Gradient: top + bottom */}
@@ -165,7 +165,7 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
 
                 {/* ── RIGHT ACTION RAIL ── */}
                 <div className="absolute right-2 z-20 flex flex-col items-center gap-3"
-                     style={{ bottom: 96 }}>
+                  style={{ bottom: 96 }}>
                   <ProfileAvatar size={44} />
                   {/* Like */}
                   <button
@@ -207,7 +207,7 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
 
                 {/* ── BOTTOM LEFT: user info + caption + sound ── */}
                 <div className="absolute left-0 right-14 z-20 px-4 pointer-events-none"
-                     style={{ bottom: 24 }}>
+                  style={{ bottom: 24 }}>
                   <div className="flex items-center gap-2 mb-1.5 pointer-events-auto">
                     <span className="font-black text-[14px] drop-shadow-md">@pixpack_official</span>
                     <span className="text-[11px] border border-white/70 px-2 py-0.5 rounded font-semibold">
@@ -227,11 +227,10 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
                     {displaySlots.map((_, j) => (
                       <div
                         key={j}
-                        className={`rounded-full transition-all duration-300 ${
-                          j === i
-                            ? 'w-3 h-1.5 bg-white'
-                            : 'w-1.5 h-1.5 bg-white/40'
-                        }`}
+                        className={`rounded-full transition-all duration-300 ${j === i
+                          ? 'w-3 h-1.5 bg-white'
+                          : 'w-1.5 h-1.5 bg-white/40'
+                          }`}
                       />
                     ))}
                   </div>
@@ -256,16 +255,16 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
         <div className="shrink-0 flex items-center justify-around px-1 py-2 bg-black border-t border-white/10 z-30">
           <button className="flex flex-col items-center gap-0.5">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="white">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
             </svg>
             <span className="text-[9px] font-bold text-white">Home</span>
           </button>
           <button className="flex flex-col items-center gap-0.5">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
             <span className="text-[9px] font-bold text-white/50">Friends</span>
           </button>
@@ -291,22 +290,31 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
       <div className="hidden md:flex w-full h-full overflow-hidden">
 
         {/* Left sidebar nav — desktop only (lg+) */}
-        <div className="hidden lg:flex w-14 flex-col items-center py-4 gap-5 border-r border-white/10 shrink-0">
+        <div className="hidden lg:flex w-20 flex-col items-center py-4 gap-5 border-r border-white/10 shrink-0">
           <div className="flex flex-col items-center mb-1">
-            <span className="text-white font-black text-[17px] leading-none tracking-tight">Tik</span>
-            <span className="text-[#EE1D52] font-black text-[17px] leading-none tracking-tight">Tok</span>
+            <span className="text-white font-black text-[17px] leading-none tracking-tight"><span className="text-[#EE1D52]">Tik</span><span className="text-white">Tok</span></span>
           </div>
           {[
-            { label: 'Home', active: true,
-              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> },
-            { label: 'Explore', active: false,
-              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> },
-            { label: 'Following', active: false,
-              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> },
-            { label: 'LIVE', active: false,
-              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="rgba(255,255,255,0.45)" stroke="none"/></svg> },
-            { label: 'Profile', active: false,
-              icon: <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-300 to-pink-500" /> },
+            {
+              label: 'Home', active: true,
+              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
+            },
+            {
+              label: 'Explore', active: false,
+              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            },
+            {
+              label: 'Following', active: false,
+              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>
+            },
+            {
+              label: 'LIVE', active: false,
+              icon: <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polygon points="10 8 16 12 10 16 10 8" fill="rgba(255,255,255,0.45)" stroke="none" /></svg>
+            },
+            {
+              label: 'Profile', active: false,
+              icon: <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-300 to-pink-500" />
+            },
           ].map((item, i) => (
             <div key={i} className="flex flex-col items-center gap-0.5 cursor-pointer">
               {item.icon}
@@ -335,8 +343,8 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
             className="flex-1 min-h-0 overflow-y-scroll snap-y snap-mandatory no-scrollbar"
           >
             {displaySlots.map((slot, i) => {
-              const src       = getImageSrc(slot)
-              const slotCopy  = slot?.adCopy?.awareness || 'You need to see this 👀 #viral #trending'
+              const src = getImageSrc(slot)
+              const slotCopy = slot?.adCopy?.awareness || 'You need to see this 👀 #viral #trending'
               const slotSound = SOUNDS[i] ?? SOUNDS[0]
 
               return (
@@ -350,15 +358,15 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
                     >
                       {src
                         ? <img
-                            src={src}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            draggable={false}
-                            alt={`TikTok ${i + 1}`}
-                          />
+                          src={src}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          draggable={false}
+                          alt={`TikTok ${i + 1}`}
+                        />
                         : <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <Loader2 size={32} className="text-white animate-spin" />
-                            <span className="text-xs text-white/60 mt-3">Rendering…</span>
-                          </div>
+                          <Loader2 size={32} className="text-white animate-spin" />
+                          <span className="text-xs text-white/60 mt-3">Rendering…</span>
+                        </div>
                       }
 
                       {/* Gradients */}
@@ -396,11 +404,10 @@ export function TikTokMockup({ images, isGenerating, onDownloadZip }: TikTokMock
                           setActiveIndex(j)
                           scrollToSlide(desktopScrollRef, j)
                         }}
-                        className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${
-                          j === activeIndex
-                            ? 'bg-[#FE2C55] text-white'
-                            : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/80'
-                        }`}
+                        className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all ${j === activeIndex
+                          ? 'bg-[#FE2C55] text-white'
+                          : 'bg-white/10 text-white/50 hover:bg-white/20 hover:text-white/80'
+                          }`}
                       >
                         {['A', 'B', 'C', 'D'][j]}
                       </button>

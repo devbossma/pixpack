@@ -282,65 +282,57 @@ Use this as the authoritative description of the object in the reference image. 
     : ''
 
   return `
-NO TEXT IN OUTPUT IMAGE — READ THIS FIRST:
-The output image must contain ZERO visible text, words, letters, numbers, watermarks, logos, or typographic elements of any kind.
-This is an absolute rule that overrides all other instructions.
-Specifically: DO NOT render the word "Photoroom", DO NOT reproduce any diagonal text pattern, DO NOT add brand names, labels, captions, or any other readable characters anywhere in the image.
-The reference image contains a diagonal "Photoroom" watermark overlay — this is a digital artifact from the tool that removed the background, it is NOT a design element of the product and must not appear anywhere in your output.
+  You are a world-class commercial product photographer and CGI compositor.
+  Task: create a single photorealistic product image for ${platform}'s platform.
+  The output image must be a single continuous photograph. It must not be a collage, a grid, or a split-panel image.
+  the ouput should be a single image no explanation no text.
+  DO NOT: return text as output, the output should be explicity the image and only image.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-You are a world-class commercial product photographer and CGI compositor.
-Task: create a single photorealistic product photograph for ${platform}.
+  READ THIS FIRST:
+  The provided product image may contain a background artifact or text overlay. DO NOT reproduce this text in the output image.
+  The output image must contain ZERO visible text, words, letters, numbers, branded graphics, logos, or typographic elements of any kind.
+  This is an absolute rule that overrides all other instructions.
+  Specifically: DO NOT render the background text artifact, DO NOT reproduce any diagonal text pattern, DO NOT add brand names, labels, captions, or any other readable characters anywhere in the image.
+  ${verticalWarning}
+  ${productHintBlock}
+  SCENE TO CREATE:
+  ${scene.image_prompt}
+  ${colorHint}
+  ${shootingMoodHint}
+  ${safetyRules ? `
+  CULTURAL & COMPLIANCE RULES:
+  ${safetyRules}
+ ` : ''}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-REFERENCE IMAGE — CRITICAL INSTRUCTION:
-The attached image shows a product processed by a tool called Photoroom (background removal).
-The image has a diagonal repeating "Photoroom" text watermark overlaid across it — including over the product itself.
-THIS WATERMARK IS A DIGITAL ARTIFACT. IT IS NOT PART OF THE PRODUCT.
-DO NOT reproduce the word "Photoroom" anywhere in your output image.
-DO NOT reproduce the diagonal repeating text pattern — not as background texture, not as surface detail, not as embossing, not in any form.
-Reconstruct the product's actual surface from what is visible beneath the watermark. The product's real surface has no text on it.
-${verticalWarning}
-${productHintBlock}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SCENE TO CREATE:
-${scene.image_prompt}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${colorHint}
-${shootingMoodHint}
-${safetyRules ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CULTURAL & COMPLIANCE RULES — MANDATORY:
-${safetyRules}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━` : ''}
+  PRODUCT INTEGRATION — MANDATORY:
+  1. GRAVITY: The product has physical weight. It sits firmly on the surface. It is NOT floating or hovering above the surface.
+  2. CONTACT SHADOW: Render a realistic shadow exactly where the product meets the surface — matching the scene's light direction and intensity.
+  3. LIGHT WRAP: The scene's ambient light wraps the product surfaces. Warm room = warm product highlights. Cool studio = neutral product tones.
+  ${fullProductRule}
+  4. EXACT FIDELITY: Reproduce the product's exact shape, color, material finish, and proportions from the reference. Do not invent features, change colors, or alter the form except ignoring any background text overlay.
+  ${materialRules}
+  ${anglePlacement}
 
-PRODUCT INTEGRATION — MANDATORY:
-1. GRAVITY: The product has physical weight. It sits firmly on the surface. It is NOT floating or hovering above the surface.
-2. CONTACT SHADOW: Render a realistic shadow exactly where the product meets the surface — matching the scene's light direction and intensity.
-3. LIGHT WRAP: The scene's ambient light wraps the product surfaces. Warm room = warm product highlights. Cool studio = neutral product tones.
-${fullProductRule}
-5. EXACT FIDELITY: Reproduce the product's exact shape, color, material finish, and proportions from the reference. Do not invent features, change colors, or alter the form.
-${materialRules}
-${anglePlacement}
+  TECHNICAL QUALITY:
+  ${qualityDirective}
+  ${audienceColor}
+  Aspect ratio: ${aspectRatio}
 
-TECHNICAL QUALITY:
-${qualityDirective}
-${audienceColor}
-Aspect ratio: ${aspectRatio}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-THE OUTPUT IMAGE MUST NOT CONTAIN:
-✗ ANY text, letters, words, numbers, or typographic characters — anywhere in the image
-✗ The word "Photoroom" — anywhere in the image
-✗ Any diagonal text pattern or repeated word used as background texture or fill
-✗ A floating or hovering product (product must touch a surface)
-✗ A cropped product (full product must be visible)
-✗ Collage, split-screen, multi-panel, or grid layout
-✗ Ghosted or semi-transparent product edges
-✗ Multiple copies of the product
-✗ Unrelated objects cluttering the foreground
-✗ Heavy vignetting or artificial lens flare (unless scene-naturally motivated)
-✗ Over-smoothed plastic-looking surfaces — render actual material texture
-${marketProhibitions ? marketProhibitions : ''}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  What a wrong generation looks like:
+  a wrong generation is when the image contains:
+  ✗ ANY text, letters, words, numbers, or typographic characters — anywhere in the image
+  ✗ The background text artifact — anywhere in the image
+  ✗ Any diagonal text pattern or repeated word used as background texture or fill
+  ✗ A floating or hovering product (product must touch a surface)
+  ✗ A cropped product (full product must be visible)
+  ✗ Collage, split-screen, multi-panel, or grid layout
+  ✗ Ghosted or semi-transparent product edges
+  ✗ Multiple copies of the product
+  ✗ Unrelated objects cluttering the foreground
+  ✗ Heavy vignetting or artificial lens flare (unless scene-naturally motivated)
+  ✗ Over-smoothed plastic-looking surfaces — render actual material texture
+  ${marketProhibitions ? marketProhibitions : ''}
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim()
 }

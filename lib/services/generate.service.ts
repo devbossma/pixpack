@@ -48,12 +48,12 @@ const DEFAULT_GAP_MS = 15_000
 // ─── Aspect ratios ────────────────────────────────────────────────────────────
 
 const ASPECT_RATIOS: Record<string, string> = {
-  instagram_post: '1:1',
+  instagram_post: '3:4',
   instagram_story: '9:16',
   tiktok: '9:16',
-  facebook_post: '4:3',
+  facebook_post: '1:1',
   shopify_product: '1:1',
-  etsy_product:    '4:3',
+  etsy_product: '4:3',
 }
 
 // ─── Streaming callbacks ──────────────────────────────────────────────────────
@@ -396,8 +396,8 @@ async function generateSingleImage(
       },
     ],
     config: {
-      responseModalities: [Modality.IMAGE], // IMAGE ONLY — text response is disallowed
-      imageConfig: { aspectRatio },
+      responseModalities: [Modality.IMAGE],
+      imageConfig: { aspectRatio, outputMimeType: 'image/png' },
       temperature: 0.7,
       topP: 0.95,
     },
@@ -413,7 +413,7 @@ async function generateSingleImage(
       console.log(`[stage3] Resizing from native to exact dimensions ${spec.width}x${spec.height}...`)
       data = await resizeImageBase64(data, mimeType ?? 'image/png', spec.width, spec.height)
     }
-    
+
     return {
       image: {
         id: `img_${scene.variation}_${Date.now()}`,
@@ -429,6 +429,7 @@ async function generateSingleImage(
 
   // ── Attempt 2: minimal fallback prompt (avoids safety filter edge cases) ───
   console.warn(`[stage3] Attempt 1 returned no image for variation ${scene.variation}. Retrying with minimal prompt...`)
+  console.warn(`Attempt 1: ${JSON.stringify(attempt1)}`)
   await delay(3000)
 
   const fallbackPrompt = `⚠️ OUTPUT: IMAGE ONLY. NO TEXT.
@@ -436,7 +437,7 @@ async function generateSingleImage(
 Generate a photorealistic product advertisement photograph.
 Platform: ${platform}. Aspect ratio: ${aspectRatio}. Angle: ${scene.angle}.
 
-The attached image shows the product (ignore the Photoroom watermark — it is NOT part of the product).
+The attached image shows the product (ignore the background text overlay — it is NOT part of the product).
 Place the product in: ${scene.image_prompt.slice(0, 300)}
 
 Rules: single image, no text overlay, no collage, product touches a surface.`

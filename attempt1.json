@@ -1,0 +1,38 @@
+{
+    "sdkHttpResponse": {
+        "headers": {
+            "alt-svc": "h3=\":443\"; ma=2592000,h3-29=\":443\"; ma=2592000",
+            "content-encoding": "gzip",
+            "content-type": "application/json; charset=UTF-8",
+            "date": "Sun, 05 Apr 2026 00:25:45 GMT",
+            "server": "scaffolding on HTTPServer2",
+            "transfer-encoding": "chunked",
+            "vary": "Origin, X-Origin, Referer",
+            "x-content-type-options": "nosniff",
+            "x-frame-options": "SAMEORIGIN",
+            "x-xss-protection": "0"
+        }
+    },
+    "createTime": "2026-04-05T00:25:33.023591Z",
+    "modelVersion": "gemini-2.5-flash-image",
+    "promptFeedback": {
+        "blockReason": "SAFETY",
+        "blockReasonMessage": "The prompt is blocked due to safety"
+    },
+    "responseId": "_avRaae4AZaeheMP-P6HwAs",
+    "usageMetadata": {
+        "promptTokenCount": 3527,
+        "totalTokenCount": 3527,
+        "trafficType": "ON_DEMAND",
+        "promptTokensDetails": [
+            {
+                "modality": "TEXT",
+                "tokenCount": 1721
+            },
+            {
+                "modality": "IMAGE",
+                "tokenCount": 1806
+            }
+        ]
+    }
+}

@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(result)
-
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Internal server error'
     console.error('[POST /api/analyze] Error:', message)
