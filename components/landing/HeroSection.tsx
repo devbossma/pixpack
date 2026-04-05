@@ -229,151 +229,171 @@ export default function HeroSection() {
   const router = useRouter()
 
   return (
-    <section className="relative flex flex-col items-center justify-center overflow-hidden bg-[#0c0c0b]"
+    <section
+      className="relative flex flex-col items-center justify-center overflow-hidden bg-[#0c0c0b]"
       style={{ minHeight: '100svh' }}
     >
       {/* ── Background layers ─────────────────────────────────────────── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
-        {/* Noise texture */}
         <div className="absolute inset-0 opacity-[0.025]"
           style={{ backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', backgroundSize: '256px' }} />
-        {/* Grid */}
-        <div className="absolute inset-0 opacity-[0.025]"
+        <div className="absolute inset-0 opacity-[0.02]"
           style={{
             backgroundImage: 'linear-gradient(#f0ece3 1px,transparent 1px),linear-gradient(90deg,#f0ece3 1px,transparent 1px)',
-            backgroundSize: '60px 60px',
+            backgroundSize: '72px 72px',
           }} />
-        {/* Large radial glow — top center */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[500px]"
-          style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(255,77,28,0.10) 0%, transparent 70%)' }} />
-        {/* Soft bottom vignette */}
-        <div className="absolute bottom-0 inset-x-0 h-40"
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[420px]"
+          style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(255,77,28,0.08) 0%, transparent 70%)' }} />
+        <div className="absolute bottom-0 inset-x-0 h-48"
           style={{ background: 'linear-gradient(to top, #0c0c0b, transparent)' }} />
       </div>
 
       {/* ── Content ───────────────────────────────────────────────────── */}
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 py-24 flex flex-col items-center gap-12">
+      <div className="relative z-10 w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 flex flex-col items-center">
 
-        {/* 1 ── Badge */}
+        {/* ── Cluster 1: Badge + Headline + Subline ── tight, reads as one unit */}
+        <div className="flex flex-col items-center gap-5 text-center">
+
+          {/* Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="flex items-center gap-2 rounded-full border border-[#ff4d1c]/20 bg-[#ff4d1c]/6 px-3.5 py-1.5"
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff4d1c] opacity-60" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#ff4d1c]" />
+            </span>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ff4d1c]">
+              Free Beta — No account needed
+            </span>
+          </motion.div>
+
+          {/* H1 */}
+          <h1
+            aria-label="AI product ad generator: turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify — with copy — while your coffee brews"
+            className="max-w-2xl"
+          >
+            <span className="sr-only">
+              AI product ad generator — turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify, with platform-native copy, while your coffee brews. Free. No account needed.
+            </span>
+
+            <div className="overflow-hidden" aria-hidden>
+              <motion.span
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.7, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+                className="block font-display font-black text-[var(--text)] leading-[1.1] tracking-[-0.03em]"
+                style={{ fontSize: 'clamp(1.875rem, 4.5vw, 3.25rem)' }}
+              >
+                One photo.
+              </motion.span>
+            </div>
+
+            <div className="overflow-hidden" aria-hidden>
+              <motion.span
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.7, delay: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                className="block font-display font-black leading-[1.1] tracking-[-0.03em]"
+                style={{ fontSize: 'clamp(1.875rem, 4.5vw, 3.25rem)' }}
+              >
+                A full{' '}<CyclingPlatformWord />{' '}pack.
+              </motion.span>
+            </div>
+
+            <div className="overflow-hidden" aria-hidden>
+              <motion.span
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.7, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                className="block font-display font-black text-[var(--text-secondary)] leading-[1.1] tracking-[-0.03em]"
+                style={{ fontSize: 'clamp(1.875rem, 4.5vw, 3.25rem)' }}
+              >
+                While your coffee brews.
+              </motion.span>
+            </div>
+          </h1>
+
+          {/* Subline */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55, duration: 0.55 }}
+            className="text-sm md:text-base text-[var(--text-secondary)] max-w-sm leading-relaxed"
+          >
+            Upload a product photo. Get 4 A/B-ready ad creatives,
+            platform-native copy, and a full testing kit.
+          </motion.p>
+        </div>
+
+        {/* ── Cluster 2: CTA ── */}
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex items-center gap-2 rounded-full border border-[#ff4d1c]/25 bg-[#ff4d1c]/8 px-4 py-1.5"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff4d1c] opacity-60" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff4d1c]" />
-          </span>
-          <span className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-[#ff4d1c]">
-            Free Beta — No account needed
-          </span>
-        </motion.div>
-
-        {/* 2 ── Headline (single h1 for SEO) */}
-        <h1
-          aria-label="AI product ad generator: turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify — with copy — while your coffee brews"
-          className="text-center space-y-0.5 max-w-3xl"
-        >
-          {/* Visually-hidden static text — read by Google, not visible */}
-          <span className="sr-only">
-            AI product ad generator — turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify, with platform-native copy, while your coffee brews. Free. No account needed.
-          </span>
-
-          {/* Line 1 — static */}
-          <div className="overflow-hidden" aria-hidden>
-            <motion.span
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              transition={{ duration: 0.75, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="block font-display font-black text-[var(--text)] leading-[1.05] tracking-[-0.04em]"
-              style={{ fontSize: 'clamp(1.75rem, 8vw, 4.5rem)' }}
-            >
-              One photo.
-            </motion.span>
-          </div>
-
-          {/* Line 2 — cycling platform */}
-          <div className="overflow-hidden" aria-hidden>
-            <motion.span
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="block font-display font-black leading-[1.05] tracking-[-0.04em]"
-              style={{ fontSize: 'clamp(1.75rem, 8vw, 4.5rem)' }}
-            >
-              A full{' '}<CyclingPlatformWord />{' '}pack.
-            </motion.span>
-          </div>
-
-          {/* Line 3 — static */}
-          <div className="overflow-hidden" aria-hidden>
-            <motion.span
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              transition={{ duration: 0.75, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
-              className="block font-display font-black text-[var(--text-secondary)] leading-[1.05] tracking-[-0.04em]"
-              style={{ fontSize: 'clamp(1.75rem, 8vw, 4.5rem)' }}
-            >
-              While your coffee brews.
-            </motion.span>
-          </div>
-        </h1>
-
-        {/* 3 ── Subline */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.65, duration: 0.6 }}
-          className="text-center text-sm md:text-lg text-[var(--text-secondary)] max-w-md leading-relaxed"
-        >
-          Upload a product photo. PixPack builds 4 A/B-ready ad creatives,
-          platform-native copy, and a full testing kit.
-        </motion.p>
-
-        {/* 4 ── Transformation demo */}
-        <TransformationDemo />
-
-        {/* 5 ── CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1, duration: 0.55 }}
-          className="flex flex-col items-center gap-3"
+          transition={{ delay: 0.75, duration: 0.5 }}
+          className="flex flex-col items-center gap-2.5 mt-8"
         >
           <motion.button
             onClick={() => router.push('/app')}
-            whileHover={{ scale: 1.025 }}
+            whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
-            className="group relative inline-flex items-center gap-2.5 overflow-hidden
+            className="group relative inline-flex items-center gap-2 overflow-hidden
               bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white
-              font-display font-bold text-base md:text-lg
-              px-10 py-4 rounded-2xl transition-colors
-              shadow-[0_0_50px_rgba(255,77,28,0.28)] hover:shadow-[0_0_70px_rgba(255,77,28,0.42)]"
+              font-display font-bold text-sm md:text-base
+              px-8 py-3.5 rounded-xl transition-colors
+              shadow-[0_0_40px_rgba(255,77,28,0.22)] hover:shadow-[0_0_60px_rgba(255,77,28,0.36)]"
           >
-            {/* Shimmer sweep */}
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
               initial={{ x: '-100%' }}
               animate={{ x: '250%' }}
-              transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.8, ease: 'easeInOut' }}
+              transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 2, ease: 'easeInOut' }}
             />
-            <Zap size={17} className="relative fill-white" />
+            <Zap size={15} className="relative fill-white" />
             <span className="relative">Generate my pack — free</span>
-            <ArrowRight size={17} className="relative transition-transform group-hover:translate-x-1" />
+            <ArrowRight size={15} className="relative transition-transform group-hover:translate-x-0.5" />
           </motion.button>
 
-          <p className="text-[11px] text-[var(--text-muted)] font-medium tracking-wide uppercase">
+          <p className="text-[10px] text-[var(--text-muted)] font-medium tracking-widest uppercase">
             No sign-up · No credit card · Results in &lt; 3 mins
           </p>
         </motion.div>
 
-        {/* 6 ── Social proof strip */}
+        {/* ── Cluster 3: Product demo — framed as a preview window ── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.95, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="w-full mt-14"
+        >
+          {/* Window chrome */}
+          <div className="rounded-2xl border border-[#222220] bg-[#111110]/80 backdrop-blur-sm overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.5)]">
+            {/* Title bar */}
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e1e1c]">
+              <div className="flex gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f57]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#febc2e]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#28c840]" />
+              </div>
+              <span className="mx-auto text-[10px] text-[#3a3a38] font-mono tracking-wide">
+                pixpack — ad pack generator
+              </span>
+            </div>
+            {/* Demo content */}
+            <div className="px-6 py-8 md:px-10 md:py-10">
+              <TransformationDemo />
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── Cluster 4: Social proof ── quiet, anchored at bottom ── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.4, duration: 0.6 }}
-          className="flex flex-wrap items-center justify-center gap-8 pt-2 border-t border-[#1e1e1c] w-full"
+          transition={{ delay: 1.2, duration: 0.6 }}
+          className="flex flex-wrap items-center justify-center gap-6 md:gap-10 mt-12 pt-8 border-t border-[#1a1a18] w-full"
         >
           {[
             { value: 12000, suffix: '+', label: 'Packs generated' },
@@ -381,18 +401,18 @@ export default function HeroSection() {
             { value: 20,    suffix: '+', label: 'Markets' },
           ].map(s => (
             <div key={s.label} className="flex flex-col items-center gap-0.5">
-              <span className="font-display font-extrabold text-xl text-[var(--text)] tracking-tight">
+              <span className="font-display font-extrabold text-lg text-[var(--text)] tracking-tight">
                 <Counter to={s.value} suffix={s.suffix} />
               </span>
-              <span className="text-[11px] text-[var(--text-muted)] uppercase tracking-widest font-medium">{s.label}</span>
+              <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-medium">{s.label}</span>
             </div>
           ))}
 
-          <div className="hidden sm:flex items-center gap-2.5">
-            <div className="flex -space-x-2">
+          <div className="hidden sm:flex items-center gap-2">
+            <div className="flex -space-x-1.5">
               {['#ff4d1c','#ffb800','#00c27a','#3b82f6','#a855f7'].map((c, i) => (
                 <div key={i}
-                  className="w-7 h-7 rounded-full border-2 border-[#0c0c0b] flex items-center justify-center text-[10px] font-black text-white"
+                  className="w-6 h-6 rounded-full border-2 border-[#0c0c0b] flex items-center justify-center text-[9px] font-black text-white"
                   style={{ backgroundColor: c }}>
                   {['M','D','A','S','K'][i]}
                 </div>
@@ -401,12 +421,12 @@ export default function HeroSection() {
             <div className="flex flex-col">
               <div className="flex gap-0.5">
                 {[1,2,3,4,5].map(i => (
-                  <svg key={i} width="11" height="11" viewBox="0 0 24 24" fill="#ffb800">
+                  <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill="#ffb800">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
                 ))}
               </div>
-              <span className="text-[11px] text-[var(--text-muted)]">Loved by 600+ merchants</span>
+              <span className="text-[10px] text-[var(--text-muted)]">Loved by 600+ merchants</span>
             </div>
           </div>
         </motion.div>
