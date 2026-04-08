@@ -45,6 +45,43 @@ const GENDER_VISUAL_CONTEXT: Record<string, string> = {
   mixed: 'Contemporary neutral: open bright spaces, shared café environments, outdoor public lifestyle. Concrete, light oak, glass.',
 }
 
+// ─── Market-specific positive scene guidance ──────────────────────────────────
+// These are ASPIRATIONAL scene settings for each market — not prohibitions.
+// They tell the model WHERE the product would naturally live for this audience.
+// Without this, a Nigerian buyer gets the same Scandinavian apartment as a US buyer.
+
+const MARKET_SCENE_CONTEXT: Record<string, string> = {
+  'united states': 'US market scenes: Venice Beach boardwalk, Hamptons weekend home, Brooklyn loft with exposed brick, LA rooftop terrace, upstate New York cabin, Californian outdoor living.',
+  'us': 'US market scenes: Venice Beach boardwalk, Hamptons weekend home, Brooklyn loft with exposed brick, LA rooftop terrace, upstate New York cabin, Californian outdoor living.',
+  'united kingdom': 'UK market scenes: Georgian townhouse interior, British countryside cottage, London flat with sash windows, Notting Hill terrace with painted facades, English garden weekend.',
+  'uk': 'UK market scenes: Georgian townhouse interior, British countryside cottage, London flat with sash windows, Notting Hill terrace with painted facades, English garden weekend.',
+  'nigeria': 'Nigerian market scenes: Lagos upscale apartment (Ikoyi / Lekki), contemporary West African villa terrace, open-air Lagos waterfront, vibrant Afro-urban market edge, palm-shaded courtyard. Warm golden light, bold colors, aspirational modern Africa.',
+  'ghana': 'Ghanaian market scenes: Accra modern villa, beachside upscale setting, contemporary Afro-luxury interior, warm outdoor terraces with tropical greenery.',
+  'kenya': 'Kenyan market scenes: Nairobi modern apartment, Westlands or Karen upscale home, savanna-adjacent outdoor lifestyle, warm East African aspirational setting.',
+  'south africa': 'South African market scenes: Cape Town apartment with Table Mountain backdrop, Joburg suburban garden, coastal outdoor lifestyle, modern South African interior with warm wood and stone.',
+  'saudi arabia': 'Saudi market scenes: Luxury private villa interior, premium Riyadh or Jeddah apartment, high-end hotel lobby setting, modern Saudi living room with warm ambient lighting. Avoid beaches, exposed outdoor casual settings.',
+  'uae': 'UAE market scenes: Contemporary Dubai apartment, luxury resort setting, modern Arabic interior design, upscale rooftop with skyline, premium mall-adjacent lifestyle.',
+  'qatar': 'Qatari market scenes: Modern Doha villa interior, premium hotel setting, luxury contemporary Arabic interior with warm gold accents.',
+  'egypt': 'Egyptian market scenes: Modern Cairo apartment, Zamalek or New Cairo upscale home, Nile-adjacent aspirational setting, warm Mediterranean coastal Egypt.',
+  'morocco': 'Moroccan market scenes: Marrakech riad courtyard, Casablanca modern apartment, zellige tile accent surfaces, warm terracotta-walled interior, medina-adjacent artisan setting.',
+  'france': 'French market scenes: Parisian Haussmann apartment interior, stone café tabletop, French Riviera terrace, Loire Valley countryside, understated luxury with floor-to-ceiling windows.',
+  'germany': 'German market scenes: Minimal Bauhaus-influenced apartment, Black Forest outdoor weekend, Berlin modern flat, clean workshop or studio, nature-adjacent German countryside.',
+  'netherlands': 'Dutch market scenes: Amsterdam canal house interior, Dutch modern apartment, tulip field adjacent, bicycle-friendly urban lifestyle, clean nordic-influenced domestic setting.',
+  'italy': 'Italian market scenes: Milan modern apartment, Amalfi coastal terrace, Tuscan villa outdoor table, Italian piazza café edge, warm stone and terracotta surfaces.',
+  'spain': 'Spanish market scenes: Barcelona rooftop terrace, Madrid modern apartment, Ibiza lifestyle, Andalusian courtyard with white walls and terracotta, warm outdoor afternoon light.',
+  'japan': 'Japanese market scenes: Minimal Zen-influenced room with tatami or pale wood floor, Tokyo modern apartment, Kyoto garden edge, wabi-sabi ceramic surface, precise negative space composition.',
+  'south korea': 'Korean market scenes: Contemporary Seoul apartment, soft K-aesthetic interior with pastel tones, curated café shelf, Han River park lifestyle, clean modern Korean home.',
+  'china': 'Chinese market scenes: Modern Shanghai or Beijing apartment, aspirational contemporary Chinese interior, luxury lifestyle cues, refined modern urban setting.',
+  'india': 'Indian market scenes: Aspirational modern Mumbai or Bangalore home, colorful but refined interior, festive warm tones, contemporary urban Indian lifestyle, rooftop garden terrace.',
+  'indonesia': 'Indonesian market scenes: Bali villa terrace with tropical greenery, Jakarta modern apartment, natural bamboo and stone surfaces, warm outdoor tropical lifestyle.',
+  'malaysia': 'Malaysian market scenes: Modern KL apartment, upscale Southeast Asian interior with tropical undertones, contemporary mall-adjacent lifestyle, warm clean domestic setting.',
+  'pakistan': 'Pakistani market scenes: Lahore or Karachi modern apartment, contemporary Pakistani home interior, aspirational domestic setting with warm amber tones.',
+  'brazil': 'Brazilian market scenes: Rio rooftop or coastal terrace, São Paulo modern apartment, lush garden outdoor setting, warm golden light, vibrant communal energy.',
+  'mexico': 'Mexican market scenes: Mexico City Roma or Condesa apartment, Oaxacan courtyard, colorful tiled surface, warm terracotta outdoor setting, contemporary Latin lifestyle.',
+  'australia': 'Australian market scenes: Bondi Beach boardwalk adjacent, Melbourne inner-city apartment, Sydney terrace house, open outdoor BBQ deck, bright coastal natural light.',
+  'canada': 'Canadian market scenes: Vancouver Pacific Northwest lifestyle, Toronto modern condo, cottage country weekend, Whistler mountain-adjacent, warm wood-toned interior.',
+}
+
 const PLATFORM_FRAMING: Record<string, string> = {
   instagram_post: 'Square 1:1. Clean rule of thirds. Premium social aesthetic.',
   instagram_story: 'Vertical 9:16. Upper-half product focus. Candid energy.',
@@ -149,132 +186,187 @@ function deriveProductContext(productProfile: ProductProfile): ProductContext {
   const useCases = (productProfile.use_cases ?? []).join(' ').toLowerCase()
   const combined = `${type} ${useCases}`
 
+  // ── Product-specific setting builder ─────────────────────────────────────────
+  // If the product has real use_cases and style_aesthetic from the analysis,
+  // use THOSE to define where the product lives — not a hardcoded category template.
+  // This is what prevents a beach bralette from ending up on a granite kitchen counter.
+  const useCasesList = productProfile.use_cases?.join(' · ') ?? ''
+  const aesthetic = productProfile.style_aesthetic ?? ''
+  const visualMood = productProfile.visual_mood ?? ''
+
+  function buildDynamicSettings(categoryFallback: { lifestyle: string; context: string; surface: string }) {
+    // If product has specific use_cases, build settings from them.
+    // Otherwise fall back to the category default.
+    if (useCasesList) {
+      return {
+        lifestyle_setting: `the product's ACTUAL real-world contexts: "${useCasesList}"${aesthetic ? ` — aesthetic: ${aesthetic}` : ''}. Do NOT default to a generic interior setting. Pick the environment from these real use cases and place the scene there.`,
+        context_setting: `an aspirational version of where this product is actually used: "${useCasesList}"${visualMood ? `. Mood: ${visualMood}` : ''}. The environment must match the product's world, not a generic lifestyle interior.`,
+        social_proof_surface: `a real surface from where this product is actually used (${useCasesList.split(' · ')[0] ?? categoryFallback.surface})`,
+      }
+    }
+    return {
+      lifestyle_setting: categoryFallback.lifestyle,
+      context_setting: categoryFallback.context,
+      social_proof_surface: categoryFallback.surface,
+    }
+  }
+
   // Pet products
   if (/\b(pet|dog|cat|animal|collar|leash|toy.*pet|pet.*toy|treats?|paw|fur|kennel|aquarium|fish|bird)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'living room rug at eye level, backyard grass, dog park, kitchen floor near the pet bowl area',
+      context: 'a cozy corner of a home with a dog bed, toys scattered, a worn hardwood floor or low-pile rug',
+      surface: 'living room floor, a front porch deck board, a garden path stone',
+    })
     return {
       category: 'pet',
-      usageContext: 'A pet owner using this for their animal companion (dog, cat, or other pet). The animal may be present in lifestyle/social_proof shots.',
+      usageContext: `A pet owner using this for their animal companion. Use contexts: ${useCasesList || 'home, outdoor, everyday pet care'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include the animal (dog or cat, breed-appropriate to the product) in the scene — relaxed, happy, using or near the product. A human hand or feet may be visible.',
       forbiddenEnvironments: 'luxury hotel lobbies, marble office desks, fashion editorial settings, gym equipment areas',
-      lifestyle_setting: 'living room rug at eye level, backyard grass, dog park, kitchen floor near the pet bowl area',
-      context_setting: 'a cozy corner of a home with a dog bed, toys scattered, a worn hardwood floor or low-pile rug',
-      social_proof_surface: 'living room floor, a front porch deck board, a garden path stone',
+      ...s,
     }
   }
 
   // Beauty / skincare / personal care
   if (/\b(serum|moisturizer|cleanser|toner|sunscreen|lipstick|mascara|eye.?shadow|foundation|blush|perfume|cologne|shampoo|conditioner|body.?wash|soap|skincare|haircare|nail|beauty|cosmetic|makeup|lotion|cream|balm|mist|spray|deodorant)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'bathroom vanity with warm backlighting, a marble sink basin edge, a vanity table with mirror reflection',
+      context: 'a clean bathroom shelf with curated skincare lineup, a spa-like counter with white towels and candles',
+      surface: 'bathroom shelf, vanity table top, bedside table in morning light',
+    })
     return {
       category: 'beauty',
-      usageContext: 'A person using this in their daily beauty or self-care routine. Use is intimate and personal.',
+      usageContext: `A person using this in their daily beauty or self-care routine. Use contexts: ${useCasesList || 'bathroom, vanity, morning routine'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include a hand applying or holding the product, or visible results on skin. Show satisfaction and care.',
       forbiddenEnvironments: 'outdoor action scenes, sports fields, garages, pet environments',
-      lifestyle_setting: 'bathroom vanity with warm backlighting, a marble sink basin edge, a vanity table with mirror reflection',
-      context_setting: 'a clean bathroom shelf with curated skincare lineup, a spa-like counter with white towels and candles',
-      social_proof_surface: 'bathroom shelf, vanity table top, bedside table in morning light',
+      ...s,
     }
   }
 
   // Sports / fitness / outdoor performance
   if (/\b(gym|fitness|workout|running|yoga|sports|athletic|cycling|hiking|climbing|training|resistance|weights|protein|supplement|performance|sneaker|shoe.*sport|sport.*shoe)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'gym floor with rubberized tiles, outdoor running path at golden hour, yoga studio hardwood floor',
+      context: 'a minimalist gym locker alcove, an outdoor park at dawn, a clean athletic studio with white walls',
+      surface: 'gym bag open on a bench, training mat surface, outdoor concrete step',
+    })
     return {
       category: 'sports',
-      usageContext: 'An active person using this during or around physical activity.',
+      usageContext: `An active person using this during or around physical activity. Use contexts: ${useCasesList || 'gym, outdoor, active lifestyle'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include an athlete or active person (implied or partially visible) using the product in an active context.',
       forbiddenEnvironments: 'luxury interiors, vanity counters, pet zones, food prep areas',
-      lifestyle_setting: 'gym floor with rubberized tiles, outdoor running path at golden hour, yoga studio hardwood floor',
-      context_setting: 'a minimalist gym locker alcove, an outdoor park at dawn, a clean athletic studio with white walls',
-      social_proof_surface: 'gym bag open on a bench, training mat surface, outdoor concrete step',
+      ...s,
     }
   }
 
   // Food / beverage / kitchen
   if (/\b(coffee|tea|beverage|drink|food|snack|supplement|protein.?bar|chocolate|olive.?oil|sauce|seasoning|spice|kitchen|cookware|mug|cup|flask|bottle.*drink|drink.*bottle)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'kitchen marble counter at morning light, café wooden table, living room coffee table',
+      context: 'a styled kitchen shelf with ceramic props, a coffee corner with a French press and plant, a dining table morning setup',
+      surface: 'kitchen counter, café table, breakfast tray in bed linen',
+    })
     return {
       category: 'food',
-      usageContext: 'A person enjoying this food or beverage in a domestic or café context.',
+      usageContext: `A person enjoying this food or beverage. Use contexts: ${useCasesList || 'kitchen, café, dining'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include hands preparing, holding, or about to consume the product. Show appetite and anticipation.',
       forbiddenEnvironments: 'gyms, pet environments, office tech setups, fashion-only spaces',
-      lifestyle_setting: 'kitchen marble counter at morning light, café wooden table, living room coffee table',
-      context_setting: 'a styled kitchen shelf with ceramic props, a coffee corner with a French press and plant, a dining table morning setup',
-      social_proof_surface: 'kitchen counter, café table, breakfast tray in bed linen',
+      ...s,
     }
   }
 
   // Tech / electronics / gadgets
   if (/\b(phone|laptop|tablet|headphone|earphone|charger|cable|speaker|camera|gadget|tech|device|keyboard|mouse|monitor|screen|usb|wireless|bluetooth|smart.?watch|wearable|power.?bank)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'clean desk setup with monitor glow, café table with laptop and coffee, modern home office',
+      context: 'a minimal desk with cord management, a bookshelf studio background, a sleek workstation with ambient light strip',
+      surface: 'desk surface, laptop bag unzipped, bedside table',
+    })
     return {
       category: 'tech',
-      usageContext: 'A professional or creative using this in their work or daily digital life.',
+      usageContext: `A professional or creative using this in their work or daily digital life. Use contexts: ${useCasesList || 'desk, workspace, travel'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include hands using or setting up the product, or a person working nearby. Show productivity or creativity.',
       forbiddenEnvironments: 'pet zones, food prep messy areas, outdoor sports fields, beauty vanities',
-      lifestyle_setting: 'clean desk setup with monitor glow, café table with laptop and coffee, modern home office',
-      context_setting: 'a minimal desk with cord management, a bookshelf studio background, a sleek workstation with ambient light strip',
-      social_proof_surface: 'desk surface, laptop bag unzipped, bedside table',
+      ...s,
     }
   }
 
   // Fashion / clothing / accessories / jewelry / bags
   if (/\b(bag|handbag|wallet|purse|watch|jewelry|necklace|ring|bracelet|earring|clothing|shirt|dress|jacket|coat|jeans|sneaker|boot|shoe|sunglasses|belt|scarf|hat|cap|accessory)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'city street with textured stone sidewalk, boutique dressing room, café terrace, apartment with morning light',
+      context: 'an editorial flat-surface with complementary props (sunglasses, keys, a book), a fashion-forward apartment interior',
+      surface: 'wooden entry table, a rumpled bed linen, café marble top, a bench seat',
+    })
     return {
       category: 'fashion',
-      usageContext: 'A style-conscious person wearing or carrying this as part of their daily look.',
+      usageContext: `A style-conscious person wearing or carrying this as part of their daily look. Use contexts: ${useCasesList || 'everyday wear, going out, travel'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include the product being worn or carried — a hand holding a bag, a wrist with a watch, a styled outfit partially visible. Show real-life style context.',
       forbiddenEnvironments: 'gyms, kitchens, pet zones, clinical or medical settings',
-      lifestyle_setting: 'city street with textured stone sidewalk, boutique dressing room, café terrace, apartment with morning light',
-      context_setting: 'an editorial flat-surface with complementary props (sunglasses, keys, a book), a fashion-forward apartment interior',
-      social_proof_surface: 'wooden entry table, a rumpled bed linen, café marble top, a bench seat',
+      ...s,
     }
   }
 
   // Home / décor / furniture / candles / plants
   if (/\b(candle|vase|cushion|pillow|blanket|throw|lamp|light|plant|pot|planter|frame|mirror|clock|shelf|decor|home|furniture|rug|curtain|towel)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'living room shelf or coffee table, bedroom side table, entrance hallway console',
+      context: 'a thoughtfully arranged living space grouping — books, plants, textured throws, warm lamplight',
+      surface: 'living room table, hallway shelf, bedroom surface',
+    })
     return {
       category: 'home',
-      usageContext: 'A homeowner styling their living space with this decorative or functional piece.',
+      usageContext: `A homeowner styling their living space. Use contexts: ${useCasesList || 'living room, bedroom, home décor'}`,
       humanPresence: 'For LIFESTYLE variations: imply a person through personal items nearby (a book, a coffee, reading glasses). No person required in context or hero shots.',
       forbiddenEnvironments: 'gyms, sports fields, outdoor wilderness, pet-only zones',
-      lifestyle_setting: 'living room shelf or coffee table, bedroom side table, entrance hallway console',
-      context_setting: 'a thoughtfully arranged living space grouping — books, plants, textured throws, warm lamplight',
-      social_proof_surface: 'living room table, hallway shelf, bedroom surface',
+      ...s,
     }
   }
 
   // Kids / baby / toys / parenting
   if (/\b(toy|baby|infant|toddler|kids?|child|children|nursery|stroller|feeding|diaper|sippy|rattle|puzzle|educational|playmat)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'bright playroom floor, backyard lawn, living room rug in natural light',
+      context: 'a colorful organized playroom corner, a nursery shelf, a bright comfortable family living space',
+      surface: 'playroom floor mat, living room rug, wooden activity table',
+    })
     return {
       category: 'kids',
-      usageContext: 'A child or baby using or playing with this product, with a parent nearby.',
+      usageContext: `A child or baby using or playing with this product. Use contexts: ${useCasesList || 'playroom, backyard, family home'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include a child\'s hands interacting with the product, or parent and child together. Show joy and safety.',
       forbiddenEnvironments: 'luxury editorial settings, bars, nightlife, sports performance zones',
-      lifestyle_setting: 'bright playroom floor, backyard lawn, living room rug in natural light',
-      context_setting: 'a colorful organized playroom corner, a nursery shelf, a bright comfortable family living space',
-      social_proof_surface: 'playroom floor mat, living room rug, wooden activity table',
+      ...s,
     }
   }
 
   // Handmade / artisan / craft products
   if (/\b(handmade|hand.?made|handcrafted|hand.?crafted|artisan|artisanal|bespoke|custom.?made|made.?to.?order|small.?batch|hand.?sewn|hand.?woven|hand.?knit|hand.?painted|hand.?carved|hand.?tooled|hand.?dyed|macram[eé]|crochet|embroidery|pottery|ceramics|stoneware|woodworking|leather.?work|felt|weaving|loom|natural.?dye|organic.?cotton|raw.?wood|reclaimed)\b/.test(combined)) {
+    const s = buildDynamicSettings({
+      lifestyle: 'a craft workshop surface with natural light, a bohemian living room rug, a rustic wooden farm table, a sun-drenched windowsill with linen curtains',
+      context: 'a handmade-goods market stall, a ceramics studio shelf with works-in-progress, a naturally lit craft room with raffia baskets and dried botanicals, a cottage kitchen with exposed brick',
+      surface: 'a rough-hewn wooden table, a folded linen cloth, a wicker tray, a stone hearth ledge, a patchwork quilt surface',
+    })
     return {
       category: 'handmade',
-      usageContext: 'A person who appreciates artisan craftsmanship, slow design, and one-of-a-kind objects. They value the story and the maker behind the item.',
+      usageContext: `A person who appreciates artisan craftsmanship and one-of-a-kind objects. Use contexts: ${useCasesList || 'home, gifting, artisan lifestyle'}`,
       humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: show hands holding or examining the piece — fingertips touching texture, the handmade quality visible on close inspection. A half-finished piece of the same craft nearby adds authenticity.',
       forbiddenEnvironments: 'corporate offices, sterile white studios with no texture, industrial environments, tech workspaces, gym settings',
-      lifestyle_setting: 'a craft workshop surface with natural light, a bohemian living room rug, a rustic wooden farm table, a sun-drenched windowsill with linen curtains',
-      context_setting: 'a handmade-goods market stall, a ceramics studio shelf with works-in-progress, a naturally lit craft room with raffia baskets and dried botanicals, a cottage kitchen with exposed brick',
-      social_proof_surface: 'a rough-hewn wooden table, a folded linen cloth, a wicker tray, a stone hearth ledge, a patchwork quilt surface',
+      ...s,
     }
   }
 
-  // Default fallback
+  // Default fallback — uses product's actual use_cases if available
+  const s = buildDynamicSettings({
+    lifestyle: 'a well-lit domestic interior appropriate to the product\'s style',
+    context: 'an aspirational lifestyle environment matching the product\'s aesthetic',
+    surface: 'a personal domestic surface: desk, shelf, table, or counter',
+  })
   return {
     category: 'general',
-    usageContext: 'A person using or displaying this product in an everyday lifestyle context.',
+    usageContext: `A person using or displaying this product in an everyday lifestyle context. Use contexts: ${useCasesList || 'everyday life'}`,
     humanPresence: 'For LIFESTYLE and SOCIAL PROOF variations: include a human element — hands, implied presence, or personal items that tell a story about the user.',
     forbiddenEnvironments: 'hospital settings, industrial environments, unrelated niche spaces',
-    lifestyle_setting: 'a well-lit domestic interior appropriate to the product\'s style',
-    context_setting: 'an aspirational lifestyle environment matching the product\'s aesthetic',
-    social_proof_surface: 'a personal domestic surface: desk, shelf, table, or counter',
+    ...s,
   }
 }
 
@@ -287,6 +379,9 @@ export function buildCreativeDirectorPrompt(
   const platform = userConfig.platform ?? 'instagram_post'
   const ageVisual = userConfig.ageRange ? AGE_VISUAL_CONTEXT[userConfig.ageRange] ?? '' : ''
   const genderVisual = userConfig.gender ? GENDER_VISUAL_CONTEXT[userConfig.gender] ?? '' : ''
+  const marketSceneContext = userConfig.country
+    ? MARKET_SCENE_CONTEXT[userConfig.country.toLowerCase().trim()] ?? ''
+    : ''
   const platformFrame = PLATFORM_FRAMING[platform] ?? ''
 
   const audienceContext = [
@@ -342,8 +437,10 @@ Forbidden environments for this product: ${productCtx.forbiddenEnvironments}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 AUDIENCE: ${audienceContext || 'Global social media users'}
-AUDIENCE VISUAL CONTEXT:
+AUDIENCE VISUAL CONTEXT — USE THIS TO SELECT SCENE ENVIRONMENTS:
 ${[ageVisual, genderVisual].filter(Boolean).join('\n')}
+${marketSceneContext ? `MARKET SCENE GUIDE (${userConfig.country}): ${marketSceneContext}
+→ Lifestyle and social proof scenes MUST feel native and aspirational to a buyer in this specific market. Do not default to generic Scandinavian or US aesthetics if the market is different.` : ''}
 
 PLATFORM: ${platform}
 FRAMING GUIDE: ${platformFrame}
@@ -387,21 +484,24 @@ How archetypes translate to VISUAL SCENES:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CREATIVE SEEDS — MANDATORY CONSTRAINTS:
-These seeds are UNIQUE to this generation. You MUST use them. They exist to ensure
-that no two generations of the same product look the same.
+These seeds are UNIQUE to this generation. They exist to prevent identical outputs.
+⚠️ SURFACE SEED RULE: The surface material seeds below are starting points. If a seed (e.g. "honed granite") does NOT match this product's natural environment, ADAPT IT to a surface that does — but keep it specific and different across all 4 variations. A beach garment surfaces on warm sand, bleached driftwood, or sun-warmed concrete — NOT on polished travertine. A gym product surfaces on rubber mat or bench wood — NOT on marble. Use your product knowledge to adapt.
 
 Variation 1 (LIFESTYLE) seeds:
   - Time of day: ${time1}
   - Color palette: ${palette1}
-  - Surface material: ${surface1}
+  - Surface material: ${surface1} (adapt to product's real environment if needed)
   - Shooting angle: ${angle1}
   - Aperture/DOF: f/1.8–f/2.8 — shallow depth of field, background falls into soft bokeh
-  - Appropriate lifestyle setting: ${productCtx.lifestyle_setting}
+  - Scene environment: ${productCtx.lifestyle_setting}
+  - Audience age guide: ${ageVisual || 'Global aspiration — use a universally relatable lifestyle setting'}
+  - Market scene guide: ${marketSceneContext || 'Default to clean aspirational western lifestyle unless product context overrides'}
+  → CRITICAL: The scene must feel like it was shot IN ${userConfig.country || 'the target market'}. Not generic. Not default Scandinavian/Nordic. The setting, light quality, and visual references must match this specific market and age group.
 
 Variation 2 (HERO/STUDIO) seeds:
   - Time of day: ${time2} (affects light direction on product)
   - Color palette: ${palette2}
-  - Surface material: ${surface2}
+  - Surface material: ${surface2} (studio shot — this seed is appropriate as-is)
   - Background color: ${heroBg}
   - Shooting angle: ${angle2}
   - Aperture/DOF: f/8–f/11 — deep focus, every product detail razor-sharp
@@ -410,10 +510,13 @@ Variation 2 (HERO/STUDIO) seeds:
 Variation 3 (CONTEXT/ASPIRATIONAL) seeds:
   - Time of day: ${time3}
   - Color palette: ${palette3}
-  - Surface material: ${surface3}
+  - Surface material: ${surface3} (adapt to product's real aspirational environment if needed)
   - Shooting angle: ${angle3}
   - Aperture/DOF: f/4–f/5.6 — product sharp, environment in soft focus behind
-  - Appropriate aspirational setting: ${productCtx.context_setting}
+  - Scene environment: ${productCtx.context_setting}
+  - Audience age guide: ${ageVisual || 'Global aspiration'}
+  - Market scene guide: ${marketSceneContext || 'Aspirational universal setting'}
+  → The aspirational context must feel attainable to a ${userConfig.ageRange || 'target age'} buyer in ${userConfig.country || 'the target market'}.
 
 Variation 4 (SOCIAL PROOF/UGC) seeds:
   - Time of day: ${time4}
@@ -421,6 +524,8 @@ Variation 4 (SOCIAL PROOF/UGC) seeds:
   - Surface material: ${productCtx.social_proof_surface}
   - Shooting angle: ${angle4}
   - Aperture/DOF: f/1.8 phone portrait-mode equivalent — organic, slightly shallow DOF mimicking smartphone camera
+  - Market context: ${marketSceneContext || 'Relatable domestic setting'}
+  → This should look like a real buyer in ${userConfig.country || 'the target market'} posted this from their home. The domestic environment must match what a ${userConfig.ageRange || 'target age'} person's home looks like in that market.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SCENE DESCRIPTION RULES — NON-NEGOTIABLE:
@@ -466,6 +571,9 @@ A candid real-life scene. The product is BEING USED or is mid-moment in someone'
 Use seed: ${time1} light · ${palette1} palette · ${surface1} surface.
 Setting: ${productCtx.lifestyle_setting}
 Human/animal: ${productCtx.humanPresence}
+Audience: ${ageVisual || 'General adult audience'}
+Market: ${marketSceneContext || 'Universally aspirational'}
+→ This scene must feel like it was taken by or for a ${userConfig.ageRange || ''} person living in ${userConfig.country || 'the target market'}. The location, light quality, and props must match their world — not a generic Western template.
 Show: A specific moment frozen in time — not a styled product shot, but a scene from real life.
 
 VARIATION 2 — HERO (Pure Studio):
@@ -489,6 +597,8 @@ Embody your TERTIARY archetype visually: if it's Belonging, show community warmt
 Use seed: ${time4} light · ${palette4} palette · ${productCtx.social_proof_surface} surface.
 A hand, packaging, or receipt should be naturally visible in frame.
 The product is fully visible, sitting firmly on the surface in a real domestic environment.
+Market: ${marketSceneContext || 'Relatable buyer home setting'}
+→ This should look like a real buyer in ${userConfig.country || 'the target market'} posted this from their own home. Not a Lagos buyer's home that looks like a Brooklyn loft. Not a Saudi buyer's home that looks like a Swedish apartment. The domestic environment MUST feel native to the buyer's market.
 This should feel like something you'd see in an Instagram Story from a happy buyer.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

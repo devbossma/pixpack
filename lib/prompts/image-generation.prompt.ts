@@ -1,23 +1,31 @@
 /**
  * lib/prompts/image-generation.prompt.ts
  *
- * v4 — Three targeted fixes:
+ * v5 — Root cause fix: identical images across different products
  *
- * FIX 1 — WATERMARK:
- *   Previous version removed "Photoroom" from the prompt and used vague
- *   terms like "background artifacts". Gemini needs the EXACT word.
- *   Restored: "DO NOT reproduce the word Photoroom".
+ * THE PROBLEM (v4):
+ *   The creative director wrote rich, product-specific scene descriptions but they were
+ *   being overridden by two things in the final image prompt:
  *
- * FIX 2 — PRODUCT GROUNDING:
- *   Added "physical weight and gravity" instruction.
- *   Products were floating/hovering. "The product has physical weight.
- *   It presses down on the surface slightly." forces realistic contact.
+ *   1. GENERIC ANGLE_PLACEMENT_RULES: These re-described the scene type (lifestyle/hero/context)
+ *      in product-agnostic terms AFTER the creative director's specific scene — Gemini
+ *      weighted the generic rules more heavily and defaulted to "product on a nice surface".
  *
- * FIX 3 — CLOSEUP ANGLE:
- *   Was producing a zoomed-out full product shot instead of true macro.
- *   Now explicitly: "Do NOT show the full product. ONE surface detail
- *   fills 90%+ of frame." And removed the "full product in frame" rule
- *   for this angle specifically.
+ *   2. MISSING PRODUCT CONTEXT: product_type, use_cases, target_customer were never injected
+ *      into the image generation prompt. Gemini had no idea if it was generating for a
+ *      coffee set, a dog collar, or a yoga mat, so it generated the same generic shot.
+ *
+ *   3. SCENE BURIED MID-PROMPT: scene.image_prompt appeared sandwiched between boilerplate,
+ *      making it lower priority than the surrounding rules.
+ *
+ * THE FIX (v5):
+ *   1. scene.image_prompt is now the PRIMARY directive — placed first, heavily emphasized.
+ *   2. Product context block added: product_type + use_cases + target_customer so Gemini
+ *      knows "this is a coffee product, it lives in a kitchen context" before generating.
+ *   3. ANGLE_PLACEMENT_RULES replaced with ANGLE_TECHNICAL_SPECS — these now ONLY cover
+ *      technical photography (DOF, f-stop, lighting setup), NOT scene re-descriptions.
+ *      The creative director already wrote the scene — these rules add to it, not replace it.
+ *   4. Fixed numbering bug (two items labeled "4." in PRODUCT INTEGRATION).
  */
 
 import type { Scene, UserConfig, ProductProfile } from '../types'
@@ -63,68 +71,46 @@ Background: Textured but clean surface (e.g., reclaimed wood, linen), cozy aesth
 `.trim(),
 }
 
-// ─── Per-angle placement rules (with depth-of-field) ─────────────────────────
+// ─── Per-angle TECHNICAL specs only (DOF, lighting setup, NOT scene re-description) ──
+// These add to the creative director's scene — they do NOT replace it.
+// The creative director already wrote what the scene looks like.
+// These rules only specify HOW to photograph it (aperture, focus plane, lighting rig).
 
-const ANGLE_PLACEMENT_RULES: Record<string, string> = {
+const ANGLE_TECHNICAL_SPECS: Record<string, string> = {
   lifestyle: `
-LIFESTYLE PLACEMENT:
-- Product rests on a real, named surface. It has physical weight and gravity.
-- Render a soft directional contact shadow exactly where product touches surface.
-- Ambient scene light wraps the product — warm room = warm product highlights.
-- The product is part of the scene, not layered on top of it.
-- Human element: hands nearby, personal items, implied presence — never isolated.
-- DEPTH OF FIELD: f/1.8–f/2.8. The product is the sharp focal plane. Background falls into
-  smooth, creamy bokeh. Foreground elements (if any) are also slightly soft.
+TECHNICAL PHOTOGRAPHY (lifestyle):
+- Depth of field: f/1.8–f/2.8. The product is the sharp focal plane. Background falls into smooth creamy bokeh.
+- Foreground elements (if any) are also slightly soft.
+- Natural ambient light — no studio flash, no ring light, no hard shadows.
+- The scene described above is a real candid moment, not a styled product shoot. Photograph it accordingly.
 `,
 
   hero: `
-HERO STUDIO PLACEMENT:
-- Product is the ONLY subject. Perfectly centered. Entire product visible.
-- Surface: a single named material beneath the product (slate, oak, marble, steel).
-- Background: a seamless gradient — one solid tone, smooth from surface to top.
-  Choose one: deep charcoal, warm cream, navy-to-black, dove grey. NO texture, NO pattern, NO repeat.
-- LIGHTING SETUP (3-point studio):
-    KEY LIGHT: positioned 45° from the product’s front-corner, at 30–45° elevation.
-    Creates the primary highlight and defines the product’s form. Diffused through a large softbox.
-    FILL LIGHT: opposite side, 2:1 ratio (half the key intensity). Softens shadows without eliminating them.
-    RIM / BACK LIGHT: positioned behind and above the product, aimed at the back edges.
-    Creates a bright separation highlight — a halo of light on the product’s rear edges that lifts it off the background.
+TECHNICAL PHOTOGRAPHY (hero studio):
+- Depth of field: f/8–f/11. Every surface detail, texture, and edge of the product is razor-sharp.
+- 3-point studio lighting:
+    KEY LIGHT: 45° from front-corner at 30–45° elevation. Large softbox diffusion. Defines product form.
+    FILL LIGHT: opposite side, 2:1 ratio. Softens shadows without eliminating them.
+    RIM / BACK LIGHT: behind and above the product, aimed at back edges. Creates a bright separation halo.
 - Contact shadow: crisp, well-defined directly under the product. Fades gently outward.
-- The product has physical weight — it presses firmly down onto the surface.
-- DEPTH OF FIELD: f/8–f/11. Every surface detail, texture, and edge of the product is razor-sharp.
 `,
 
   context: `
-ASPIRATIONAL CONTEXT PLACEMENT:
-- Rich environmental scene. No person visible.
-- Product placed naturally on a surface within the environment.
-- Background: dense with real scene detail — at least 3 specific named elements
-  (e.g. "a trailing pothos plant, a brass floor lamp, floor-to-ceiling linen curtains").
-- Product receives the scene’s natural light — direction, color temperature, intensity match.
-- DEPTH OF FIELD: f/4–f/5.6. Product is the sharpest element. Environmental props behind it
-  are in soft focus — identifiable but not competing for attention.
+TECHNICAL PHOTOGRAPHY (aspirational context):
+- Depth of field: f/4–f/5.6. Product is the sharpest element. Environmental props behind are in soft focus — identifiable but not competing.
+- Natural scene light — the product receives the scene's ambient light in direction, color temperature, and intensity.
+- No person visible in the scene. The environment tells the story.
 `,
 
   social_proof: `
-SOCIAL PROOF / UGC PLACEMENT:
-- This is an AUTHENTIC first-use or unboxing moment. It must look real, not staged.
-- The FULL product is clearly visible and in frame — minimum 40% frame coverage.
-- A hand rests beside or partially holds the product from the edge of frame, or packaging (paper bag, box) is visible nearby.
-- Personal items (coffee cup, phone, keys) are casually placed in the scene — not artfully arranged, organically positioned.
-- Surface: a real domestic surface — bed linen, bathroom shelf, kitchen counter, wooden desk.
-- Lighting: soft natural window light only. No softboxes, no ring lights, no studio flash.
-  Warm morning or afternoon indoor ambient light. Slight natural skin-tone warmth on surfaces.
-- Background: real domestic interior, slightly out of focus — blurred apartment wall, sheer curtained window, bookshelf. NOT a seamless gradient.
-- DEPTH OF FIELD: f/1.8 phone portrait-mode simulation. Background is noticeably blurred — the kind of
-  selective focus a modern smartphone creates on its portrait mode. Looks organic, not studio.
-- Mood: This should feel like a frame from someone’s Instagram Stories, not a commercial shoot.
+TECHNICAL PHOTOGRAPHY (social proof / UGC):
+- Depth of field: f/1.8 phone portrait-mode simulation. Background noticeably blurred — the kind of selective focus a modern smartphone creates on portrait mode.
+- Natural window light only. No studio flash, no ring light. Warm morning or afternoon indoor ambient.
+- This should look like a frame from someone's Instagram Stories, not a commercial shoot.
 `,
 }
 
 // ─── Material-specific rendering rules ───────────────────────────────────────
-// Different materials require different rendering treatment to look photorealistic.
-// Glass ≠ leather ≠ fabric ≠ metal. Passing the wrong rendering approach produces
-// a product that looks like a 3D render, not a real photograph.
 
 function buildMaterialRenderingRules(surfaceFinish?: string): string {
   if (!surfaceFinish) return ''
@@ -137,7 +123,7 @@ function buildMaterialRenderingRules(surfaceFinish?: string): string {
 - DO NOT render the surface as flat-colored — gloss always shows light interaction.`,
 
     metallic: `METALLIC SURFACE RENDERING:
-- The product’s metal surfaces reflect their environment — show a blurred, desaturated reflection of the scene.
+- The product's metal surfaces reflect their environment — show a blurred, desaturated reflection of the scene.
 - Rim light creates a bright, continuous edge highlight that separates the product from background.
 - Key light creates a large, clean specular panel — not a single pinpoint dot.
 - Brushed metal: reflections are streaked along the brush direction. Polished metal: reflections are mirror-clear.
@@ -158,7 +144,7 @@ function buildMaterialRenderingRules(surfaceFinish?: string): string {
 - The fabric color is the pure surface color — no glossy overlay altering the hue.`,
 
     leather: `LEATHER SURFACE RENDERING:
-- Render the leather’s characteristic wide, soft specular sheen — a broad warm highlight across the grain.
+- Render the leather's characteristic wide, soft specular sheen — a broad warm highlight across the grain.
 - Leather grain pattern is visible and consistent with the reference — not smooth, not plastic.
 - Stitching detail catches the key light at a slightly different angle — render stitching with its own micro-highlight.
 - Leather absorbs light richly — shadow areas are deep and warm. The contrast ratio is high.
@@ -171,7 +157,7 @@ function buildMaterialRenderingRules(surfaceFinish?: string): string {
 - If there is a glaze break or textured foot ring, render these with honest material honesty.`,
 
     wood: `WOOD SURFACE RENDERING:
-- Render visible wood grain running with the product’s natural grain direction.
+- Render visible wood grain running with the product's natural grain direction.
 - Warm light makes wood glow from within — grain highlights carry warm amber undertones.
 - Oiled / finished wood shows a subtle sheen. Raw / unfinished wood is completely flat with no specular.
 - End-grain surfaces (if visible) show a tighter, more circular pattern — render them differently from face-grain.
@@ -180,7 +166,7 @@ function buildMaterialRenderingRules(surfaceFinish?: string): string {
     matte: `MATTE SURFACE RENDERING:
 - Absolutely no specular highlight — the surface scatters light uniformly in all directions (Lambertian).
 - Ambient occlusion darkens recessed areas, inside corners, and tight joints.
-- The product’s color is fully and accurately represented — no glossy overlay shifting the hue.
+- The product's color is fully and accurately represented — no glossy overlay shifting the hue.
 - Surface texture (if any) is fully visible — matte finishes show every surface detail.
 - Shadow transitions are smooth and gradual — no hard shadow boundaries.`,
 
@@ -231,6 +217,81 @@ function buildAudienceColorMood(userConfig?: UserConfig): string {
   return lines.length ? `\nAUDIENCE COLOR DIRECTION:\n${lines.join('\n')}` : ''
 }
 
+// ─── Wearable detection ────────────────────────────────────────────────────────
+// Returns true if the product is meant to be worn on the body.
+// Used to override the "place on surface" defaults in lifestyle/social_proof shots.
+
+const WEARABLE_PATTERN = /\b(watch|ring|bracelet|necklace|earring|pendant|bangle|anklet|brooch|cuff|chain|choker|locket|jewelry|jewellery|shoe|sneaker|boot|sandal|heel|loafer|trainer|bag|handbag|backpack|purse|clutch|tote|crossbody|satchel|wallet|hat|cap|beanie|beret|headband|scarf|glove|mitten|belt|sunglasses|glasses|eyewear|clothing|shirt|dress|jacket|coat|jeans|trousers|pants|skirt|suit|blazer|hoodie|sweater|cardigan|vest|leggings|shorts)\b/i
+
+function isWearableProduct(productProfile?: ProductProfile): boolean {
+  if (!productProfile) return false
+  const combined = [
+    productProfile.product_type ?? '',
+    ...(productProfile.use_cases ?? []),
+  ].join(' ').toLowerCase()
+  return WEARABLE_PATTERN.test(combined)
+}
+
+// ─── Product context block ─────────────────────────────────────────────────────
+// Tells the image model WHAT the product is and WHERE it belongs before it generates.
+// Without this, Gemini treats every product identically and defaults to a generic surface shot.
+
+function buildProductContextBlock(productProfile?: ProductProfile, angle?: string): string {
+  if (!productProfile) return ''
+  const lines: string[] = []
+
+  if (productProfile.product_type) {
+    lines.push(`Product type: ${productProfile.product_type}`)
+  }
+  if (productProfile.use_cases?.length) {
+    lines.push(`Real-world use contexts: ${productProfile.use_cases.join(' · ')}`)
+  }
+  if (productProfile.target_customer) {
+    lines.push(`Target user: ${productProfile.target_customer}`)
+  }
+  if (productProfile.style_aesthetic) {
+    lines.push(`Visual aesthetic: ${productProfile.style_aesthetic}`)
+  }
+
+  if (!lines.length) return ''
+
+  const wearable = isWearableProduct(productProfile)
+  const isLifestyleAngle = angle === 'lifestyle' || angle === 'social_proof'
+
+  // Wearable-specific instruction: for lifestyle/UGC shots, product should be WORN not placed
+  const wearableInstruction = wearable && isLifestyleAngle
+    ? `
+⚠️ WEARABLE PRODUCT — CRITICAL RULE FOR THIS SCENE TYPE:
+This product is designed to be WORN or CARRIED on the body, not placed on a surface.
+In this scene, the product MUST be shown being worn or held by a person:
+- A watch → on a wrist, sleeve partially visible
+- A ring or bracelet → on a hand or wrist
+- A necklace → worn on a neck, collarbone visible
+- A bag or purse → carried on a shoulder, held by a handle, or resting against a hip
+- Shoes → on feet, person seated or walking
+- Clothing → worn by a person, at least partially visible
+- Sunglasses → on a face or held in hand
+Do NOT place this product on a table or surface for this shot type.
+The person does not need to be fully in frame — a hand, wrist, shoulder, or partial silhouette is enough.`
+    : wearable
+      ? `Note: This is a wearable product. In lifestyle and UGC shots it should be worn — in studio/hero shots it may be placed on a surface.`
+      : ''
+
+  return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT THIS PRODUCT IS — READ THIS BEFORE GENERATING:
+${lines.join('\n')}
+${wearableInstruction}
+This context defines where this product BELONGS in the real world.
+The scene you generate MUST match this product's natural environment and usage.
+Do NOT default to a generic "product on a white table" shot.
+A coffee product belongs in a kitchen or café context.
+A pet product belongs in a home with an animal present.
+A skincare product belongs in a bathroom or vanity context.
+Match the scene to the product's real life — not to a generic product photo template.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+}
+
 // ─── Main prompt builder ───────────────────────────────────────────────────────
 
 export function buildImageGenerationPrompt(
@@ -242,7 +303,7 @@ export function buildImageGenerationPrompt(
 ): string {
   const platform = userConfig?.platform ?? 'instagram_post'
   const qualityDirective = PLATFORM_QUALITY_DIRECTIVES[platform] ?? 'Professional product photography.'
-  const anglePlacement = ANGLE_PLACEMENT_RULES[scene.angle] ?? ''
+  const angleTechSpecs = ANGLE_TECHNICAL_SPECS[scene.angle] ?? ''
   const audienceColor = buildAudienceColorMood(userConfig)
   const verticalWarning = ['instagram_story', 'tiktok'].includes(platform)
     ? '\nFORMAT: ONE SINGLE CONTINUOUS PHOTOGRAPH. NOT a collage. NOT split panels. NOT a grid.\n'
@@ -250,6 +311,14 @@ export function buildImageGenerationPrompt(
 
   // Material-specific rendering rules derived from surface_finish in product analysis
   const materialRules = buildMaterialRenderingRules(productProfile?.surface_finish)
+
+  // For wearable products in lifestyle/social_proof shots, "full product visible" is wrong —
+  // a watch on a wrist doesn't need 40% frame coverage; it needs to be clearly worn.
+  const wearable = isWearableProduct(productProfile)
+  const isLifestyleAngle = scene.angle === 'lifestyle' || scene.angle === 'social_proof'
+  const productVisibilityRule = wearable && isLifestyleAngle
+    ? '4. PRODUCT CLEARLY VISIBLE: The product must be clearly identifiable and its key features visible. It does not need to fill 40% of the frame — it should be shown as it would naturally appear when worn or carried.'
+    : '4. FULL PRODUCT VISIBLE: Do not crop any part of the product. Full product in frame. Minimum 40% frame coverage.'
 
   // Dominant color palette hint — ensures the generated environment harmonizes with the product
   const colorHint = productProfile?.dominant_colors?.length
@@ -261,8 +330,8 @@ export function buildImageGenerationPrompt(
     ? `\nPRODUCT SHOOTING MOOD (from product analysis): "${productProfile.shooting_mood}"\nUse this as a secondary lighting reference when the scene description allows latitude.\n`
     : ''
 
-  // All angles require the full product in frame
-  const fullProductRule = '4. FULL PRODUCT IN FRAME: Do not crop any part of the product. Full product visible. Minimum 40% frame coverage.'
+  // Product context block — tells Gemini what the product is and where it lives
+  const productContextBlock = buildProductContextBlock(productProfile, scene.angle)
 
   // Cultural safety rules — market + category + platform compliance
   const safetyRules = getSafetyRules({
@@ -275,64 +344,66 @@ export function buildImageGenerationPrompt(
   const productHintBlock = productHint
     ? `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ MERCHANT'S PRODUCT DESCRIPTION — READ BEFORE PLACING THE PRODUCT:
+⚡ MERCHANT'S PRODUCT DESCRIPTION — AUTHORITATIVE:
 "${productHint}"
-Use this as the authoritative description of the object in the reference image. If the merchant describes it as "handmade" or "artisanal", the generated scene MUST reflect a handmade aesthetic. Do NOT default to a generic product category.
+Trust this over visual inference. If the merchant says "handmade wool macramé", the scene must reflect handmade craftsmanship — not generic home décor.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
     : ''
 
   return `
-  You are a world-class commercial product photographer and CGI compositor.
-  Task: create a single photorealistic product image for ${platform}'s platform.
-  The output image must be a single continuous photograph. It must not be a collage, a grid, or a split-panel image.
-  the ouput should be a single image no explanation no text.
-  DO NOT: return text as output, the output should be explicity the image and only image.
+You are a world-class commercial product photographer and CGI compositor.
+Task: create a single photorealistic product image for ${platform}'s platform.
+Output: ONE single continuous photograph. No collage, no grid, no split panels. No text. No explanation.
+${verticalWarning}
+${productContextBlock}
+${productHintBlock}
 
-  READ THIS FIRST:
-  The provided product image may contain a background artifact or text overlay. DO NOT reproduce this text in the output image.
-  The output image must contain ZERO visible text, words, letters, numbers, branded graphics, logos, or typographic elements of any kind.
-  This is an absolute rule that overrides all other instructions.
-  Specifically: DO NOT render the background text artifact, DO NOT reproduce any diagonal text pattern, DO NOT add brand names, labels, captions, or any other readable characters anywhere in the image.
-  ${verticalWarning}
-  ${productHintBlock}
-  SCENE TO CREATE:
-  ${scene.image_prompt}
-  ${colorHint}
-  ${shootingMoodHint}
-  ${safetyRules ? `
-  CULTURAL & COMPLIANCE RULES:
-  ${safetyRules}
- ` : ''}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRIMARY DIRECTIVE — THIS IS THE SCENE YOU MUST CREATE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${scene.image_prompt}
 
-  PRODUCT INTEGRATION — MANDATORY:
-  1. GRAVITY: The product has physical weight. It sits firmly on the surface. It is NOT floating or hovering above the surface.
-  2. CONTACT SHADOW: Render a realistic shadow exactly where the product meets the surface — matching the scene's light direction and intensity.
-  3. LIGHT WRAP: The scene's ambient light wraps the product surfaces. Warm room = warm product highlights. Cool studio = neutral product tones.
-  ${fullProductRule}
-  4. EXACT FIDELITY: Reproduce the product's exact shape, color, material finish, and proportions from the reference. Do not invent features, change colors, or alter the form except ignoring any background text overlay.
-  ${materialRules}
-  ${anglePlacement}
+Every visual decision in this image — the environment, the props, the light direction, the surfaces, the human/animal presence — comes from the scene description above.
+Do NOT substitute a generic product-on-table shot. Do NOT ignore the specific environment described.
+If the scene says "a dog park at golden hour with a Labrador beside the product", generate exactly that.
+If the scene says "a marble bathroom vanity with a woman's hand applying the product", generate exactly that.
+The scene description is the primary visual brief. Follow it precisely.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${colorHint}
+${shootingMoodHint}
+${safetyRules ? `
+CULTURAL & COMPLIANCE RULES:
+${safetyRules}
+` : ''}
 
-  TECHNICAL QUALITY:
-  ${qualityDirective}
-  ${audienceColor}
-  Aspect ratio: ${aspectRatio}
+PRODUCT FIDELITY — MANDATORY:
+The provided reference image shows the exact product to place in the scene. Reproduce it faithfully:
+1. GRAVITY: The product has physical weight. It sits firmly on the surface. It is NOT floating or hovering.
+2. CONTACT SHADOW: Render a realistic shadow exactly where the product meets the surface — matching the scene's light direction.
+3. LIGHT WRAP: The scene's ambient light wraps the product surfaces. Warm room = warm product highlights. Cool studio = neutral product tones.
+${productVisibilityRule}
+5. EXACT FIDELITY: Reproduce the product's exact shape, color, material finish, and proportions. Do not invent features, change colors, or alter the form.
+6. WATERMARK REMOVAL: The reference image may contain a "Photoroom" text watermark — DO NOT reproduce this text anywhere in the output.
+${materialRules}
 
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  What a wrong generation looks like:
-  a wrong generation is when the image contains:
-  ✗ ANY text, letters, words, numbers, or typographic characters — anywhere in the image
-  ✗ The background text artifact — anywhere in the image
-  ✗ Any diagonal text pattern or repeated word used as background texture or fill
-  ✗ A floating or hovering product (product must touch a surface)
-  ✗ A cropped product (full product must be visible)
-  ✗ Collage, split-screen, multi-panel, or grid layout
-  ✗ Ghosted or semi-transparent product edges
-  ✗ Multiple copies of the product
-  ✗ Unrelated objects cluttering the foreground
-  ✗ Heavy vignetting or artificial lens flare (unless scene-naturally motivated)
-  ✗ Over-smoothed plastic-looking surfaces — render actual material texture
-  ${marketProhibitions ? marketProhibitions : ''}
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECHNICAL PHOTOGRAPHY:
+${qualityDirective}
+${angleTechSpecs}
+${audienceColor}
+Aspect ratio: ${aspectRatio}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ABSOLUTE PROHIBITIONS:
+✗ ANY text, letters, words, numbers, or typographic characters anywhere in the image
+✗ The "Photoroom" watermark text or any diagonal text pattern
+✗ A generic "product on a clean table" shot when the scene specifies a real environment
+✗ Ignoring the scene's specific environment and replacing it with a studio backdrop
+✗ A floating or hovering product (product must touch a surface with a contact shadow)
+✗ A cropped product (full product must be visible)
+✗ Collage, split-screen, multi-panel, or grid layout
+✗ Multiple copies of the product
+✗ Over-smoothed plastic-looking surfaces — render actual material texture
+${marketProhibitions ? marketProhibitions : ''}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `.trim()
 }
