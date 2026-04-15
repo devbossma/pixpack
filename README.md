@@ -136,5 +136,5 @@ Contributions are welcome! Whether it's adding a new platform size, tuning promp
 
 ## 📄 License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+<!-- Distributed under the MIT License. See `LICENSE` for more information. -->
 
