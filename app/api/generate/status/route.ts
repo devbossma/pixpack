@@ -3,13 +3,10 @@
  *
  * GET /api/generate/status
  *
- * Returns how many generations this IP has remaining today.
- * Called on page load — before the user clicks Generate.
- * Allows the UI to show "2 generations remaining today" proactively
- * and disable the Generate button when limit is reached.
+ * Protected — requires authenticated user.
  *
- * No auth required — IP-based only.
- * Read-only — does NOT increment the counter.
+ * Returns how many generations this user has remaining today.
+ * Uses email-based rate limiting for authenticated users.
  *
  * Response:
  * {
@@ -21,15 +18,25 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getRemainingGenerations } from '@/lib/rate-limit'
+import { getAuthUser } from '@/lib/supabase-auth'
 
 export const maxDuration = 10
 
 export async function GET(request: NextRequest) {
+    // Auth check
+    const user = await getAuthUser()
+    if (!user) {
+        return NextResponse.json(
+            { error: 'Authentication required' },
+            { status: 401 },
+        )
+    }
+
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
         ?? request.headers.get('x-real-ip')
         ?? '127.0.0.1'
 
-    const { remaining, resetInMs } = await getRemainingGenerations(ip)
+    const { remaining, resetInMs } = await getRemainingGenerations(ip, user.email)
 
     return NextResponse.json({
         remaining,

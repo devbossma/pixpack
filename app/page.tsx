@@ -6,11 +6,14 @@ import { PlatformsAndMarkets } from '@/components/landing/PlatformsAndMarkets'
 import { WhoIsItFor } from '@/components/landing/WhoIsItFor'
 import { FAQSection } from '@/components/landing/FAQSection'
 import { FinalCTA } from '@/components/landing/FinalCTA'
+import { getAuthUser } from '@/lib/supabase-auth'
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const user = await getAuthUser()
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Topbar />
+      <Topbar user={user} />
       <main className="flex-1">
         <HeroSection />
         <HowItWorks />

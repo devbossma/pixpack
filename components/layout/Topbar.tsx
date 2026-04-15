@@ -1,12 +1,19 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
+import { UserMenu } from '@/components/auth/UserMenu'
 import { ArrowRight } from 'lucide-react'
 
-export function Topbar() {
+interface TopbarProps {
+  user?: {
+    email: string
+    avatarUrl?: string | null
+  } | null
+}
+
+export function Topbar({ user }: TopbarProps) {
   const pathname = usePathname()
   const isApp = pathname?.startsWith('/app')
 
@@ -48,14 +55,21 @@ export function Topbar() {
 
         <div className="flex items-center gap-2 sm:gap-4">
           <ThemeToggle />
-          {!isApp && (
-            <Link
-              href="/app"
-              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-[11px] font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(255,77,28,0.15)] hover:shadow-[0_0_25px_rgba(255,77,28,0.25)] active:scale-95 whitespace-nowrap"
-            >
-              Launch App
-              <ArrowRight size={14} className="hidden sm:block" />
-            </Link>
+
+          {user ? (
+            /* ── Authenticated: show user menu ── */
+            <UserMenu email={user.email} avatarUrl={user.avatarUrl} />
+          ) : (
+            /* ── Unauthenticated: show CTA ── */
+            !isApp && (
+              <Link
+                href="/login"
+                className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white text-[11px] font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(255,77,28,0.15)] hover:shadow-[0_0_25px_rgba(255,77,28,0.25)] active:scale-95 whitespace-nowrap"
+              >
+                Launch App
+                <ArrowRight size={14} className="hidden sm:block" />
+              </Link>
+            )
           )}
         </div>
       </div>

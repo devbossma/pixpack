@@ -3,6 +3,8 @@
  *
  * POST /api/analyze
  *
+ * Protected — requires authenticated user.
+ *
  * Accepts: multipart/form-data
  *   file         File    — product photo (required)
  *   productHint  string  — optional free-text hint for Gemini
@@ -15,8 +17,18 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { analyzeProduct }            from '@/lib/services/analyze.service'
+import { getAuthUser }               from '@/lib/supabase-auth'
 
 export async function POST(request: NextRequest) {
+  // Auth check
+  const user = await getAuthUser()
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Authentication required. Please sign in.' },
+      { status: 401 },
+    )
+  }
+
   try {
     const formData = await request.formData()
 

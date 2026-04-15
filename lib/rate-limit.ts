@@ -1,16 +1,19 @@
 /**
  * lib/rate-limit.ts
  *
- * IP-based rate limiting for generation.
+ * Rate limiting for generation.
  * Uses Upstash Redis — INCR + EXPIRE, purpose-built for this.
  *
- * 3 generations per IP per 24 hours.
+ * Dual mode:
+ *   - Authenticated: 3 generations per email per 24 hours (primary)
+ *   - Fallback: 3 generations per IP per 24 hours (belt-and-suspenders)
+ *
  * If Redis is down, fails open (don't block users for infra issues).
  */
 
 import redis from './redis'
 
-const MAX_PER_IP_PER_DAY = 3
+const MAX_PER_DAY = 3
 const WINDOW_SECONDS = 60 * 60 * 24
 
 export interface RateLimitResult {
@@ -20,32 +23,69 @@ export interface RateLimitResult {
     reason?: string
 }
 
-function genKey(ip: string): string {
-    return `ratelimit:gen:${ip}`
+function genKeyByEmail(email: string): string {
+    return `ratelimit:gen:email:${email.toLowerCase()}`
 }
 
-export async function checkGenerationLimit(ip: string): Promise<RateLimitResult> {
-    const key = genKey(ip)
+function genKeyByIp(ip: string): string {
+    return `ratelimit:gen:ip:${ip}`
+}
 
+/**
+ * Check generation limit.
+ * When `email` is provided, uses email-based limiting (preferred for authenticated users).
+ * Always falls back to IP-based as a secondary check.
+ */
+export async function checkGenerationLimit(
+    ip: string,
+    email?: string,
+): Promise<RateLimitResult> {
     try {
-        const count = await redis.incr(key)
-        if (count === 1) await redis.expire(key, WINDOW_SECONDS)
+        // Primary: email-based (for authenticated users)
+        if (email) {
+            const emailKey = genKeyByEmail(email)
+            const emailCount = await redis.incr(emailKey)
+            if (emailCount === 1) await redis.expire(emailKey, WINDOW_SECONDS)
 
-        const ttl = await redis.ttl(key)
+            const ttl = await redis.ttl(emailKey)
+            const resetInMs = ttl > 0 ? ttl * 1000 : WINDOW_SECONDS * 1000
+
+            if (emailCount > MAX_PER_DAY) {
+                return {
+                    allowed: false,
+                    remaining: 0,
+                    resetInMs,
+                    reason: `Daily limit reached. You can generate ${MAX_PER_DAY} packs per day. Resets in ${formatResetTime(resetInMs)}.`,
+                }
+            }
+
+            return {
+                allowed: true,
+                remaining: MAX_PER_DAY - emailCount,
+                resetInMs,
+            }
+        }
+
+        // Fallback: IP-based (shouldn't normally be hit with auth, but kept for safety)
+        const ipKey = genKeyByIp(ip)
+        const count = await redis.incr(ipKey)
+        if (count === 1) await redis.expire(ipKey, WINDOW_SECONDS)
+
+        const ttl = await redis.ttl(ipKey)
         const resetInMs = ttl > 0 ? ttl * 1000 : WINDOW_SECONDS * 1000
 
-        if (count > MAX_PER_IP_PER_DAY) {
+        if (count > MAX_PER_DAY) {
             return {
                 allowed: false,
                 remaining: 0,
                 resetInMs,
-                reason: `Daily limit reached. You can generate ${MAX_PER_IP_PER_DAY} packs per day. Resets in ${formatResetTime(resetInMs)}.`,
+                reason: `Daily limit reached. You can generate ${MAX_PER_DAY} packs per day. Resets in ${formatResetTime(resetInMs)}.`,
             }
         }
 
         return {
             allowed: true,
-            remaining: MAX_PER_IP_PER_DAY - count,
+            remaining: MAX_PER_DAY - count,
             resetInMs,
         }
 
@@ -55,19 +95,27 @@ export async function checkGenerationLimit(ip: string): Promise<RateLimitResult>
     }
 }
 
-export async function getRemainingGenerations(ip: string): Promise<{
+/**
+ * Get remaining generations without incrementing.
+ * When `email` is provided, checks email-based counter.
+ */
+export async function getRemainingGenerations(
+    ip: string,
+    email?: string,
+): Promise<{
     remaining: number
     resetInMs: number
 }> {
-    const key = genKey(ip)
     try {
+        // Use email-based counter if available
+        const key = email ? genKeyByEmail(email) : genKeyByIp(ip)
         const raw = await redis.get<number>(key)
         const count = raw ?? 0
         const ttl = await redis.ttl(key)
         const resetInMs = ttl > 0 ? ttl * 1000 : WINDOW_SECONDS * 1000
-        return { remaining: Math.max(0, MAX_PER_IP_PER_DAY - count), resetInMs }
+        return { remaining: Math.max(0, MAX_PER_DAY - count), resetInMs }
     } catch {
-        return { remaining: MAX_PER_IP_PER_DAY, resetInMs: WINDOW_SECONDS * 1000 }
+        return { remaining: MAX_PER_DAY, resetInMs: WINDOW_SECONDS * 1000 }
     }
 }
 
