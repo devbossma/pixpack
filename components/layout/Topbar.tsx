@@ -10,6 +10,7 @@ interface TopbarProps {
   user?: {
     email: string
     avatarUrl?: string | null
+    fullName?: string | null
   } | null
 }
 
@@ -58,7 +59,7 @@ export function Topbar({ user }: TopbarProps) {
 
           {user ? (
             /* ── Authenticated: show user menu ── */
-            <UserMenu email={user.email} avatarUrl={user.avatarUrl} />
+            <UserMenu email={user.email} avatarUrl={user.avatarUrl} fullName={user.fullName} />
           ) : (
             /* ── Unauthenticated: show CTA ── */
             !isApp && (

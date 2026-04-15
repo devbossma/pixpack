@@ -16,9 +16,10 @@ import { signOut } from '@/app/auth/actions'
 interface UserMenuProps {
   email: string
   avatarUrl?: string | null
+  fullName?: string | null
 }
 
-export function UserMenu({ email, avatarUrl }: UserMenuProps) {
+export function UserMenu({ email, avatarUrl, fullName }: UserMenuProps) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -92,8 +93,8 @@ export function UserMenu({ email, avatarUrl }: UserMenuProps) {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-[var(--text)] truncate">{email}</p>
-                  <p className="text-[10px] text-[var(--text-muted)]">Free plan</p>
+                  <p className="text-xs font-semibold text-[var(--text)] truncate">{fullName ?? email.split('@')[0]}</p>
+                  <p className="text-[10px] text-[var(--text-muted)] truncate">{email}</p>
                 </div>
               </div>
             </div>

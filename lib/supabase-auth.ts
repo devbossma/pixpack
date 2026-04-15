@@ -15,11 +15,14 @@ import { cookies } from 'next/headers'
 export interface AuthUser {
   id: string
   email: string
+  avatarUrl?: string | null
+  fullName?: string | null
 }
 
 /**
  * Returns the authenticated user or null.
  * Always validates with the Supabase auth server (getUser, not getSession).
+ * Extracts avatar_url and full_name from user_metadata (populated by OAuth providers).
  */
 export async function getAuthUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies()
@@ -34,8 +37,12 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     return null
   }
 
+  const meta = user.user_metadata as Record<string, unknown> | undefined
+
   return {
     id: user.id,
     email: user.email,
+    avatarUrl: (meta?.avatar_url as string) ?? (meta?.picture as string) ?? null,
+    fullName: (meta?.full_name as string) ?? (meta?.name as string) ?? null,
   }
 }
