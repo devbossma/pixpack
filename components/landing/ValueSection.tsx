@@ -3,29 +3,29 @@ import { motion } from 'framer-motion'
 import { Camera, PenLine, FlaskConical, Timer, TrendingDown, TrendingUp } from 'lucide-react'
 
 const COMPARISON_ITEMS = [
-  { 
-    Icon: Camera,        
-    label: 'Agency Photoshoot',       
-    cost: '$2,500+', 
-    sub: '10-day lead time for a single styled scene' 
+  {
+    Icon: Camera,
+    label: 'Agency Photoshoot',
+    cost: '$2,500+',
+    sub: '10-day lead time for a single styled scene'
   },
-  { 
-    Icon: PenLine,       
-    label: 'Copywriter (12 variants)',    
-    cost: '$600+',     
-    sub: 'Professional funnel-staged ad copy per product' 
+  {
+    Icon: PenLine,
+    label: 'Copywriter (12 variants)',
+    cost: '$600+',
+    sub: 'Professional funnel-staged ad copy per product'
   },
-  { 
-    Icon: Timer, 
-    label: 'Media Buyer Hours',   
-    cost: '$450+',  
-    sub: 'Manual resizing and formatting for 6 platforms' 
+  {
+    Icon: Timer,
+    label: 'Media Buyer Hours',
+    cost: '$450+',
+    sub: 'Manual resizing and formatting for 6 platforms'
   },
-  { 
-    Icon: FlaskConical,      
-    label: 'A/B Testing Cycle', 
-    cost: '$500+',         
-    sub: 'Cost of low-performing creative before finding a winner' 
+  {
+    Icon: FlaskConical,
+    label: 'A/B Testing Cycle',
+    cost: '$500+',
+    sub: 'Cost of low-performing creative before finding a winner'
   },
 ]
 
@@ -47,7 +47,7 @@ export function ValueSection() {
               <span className="text-[var(--accent)]">not just images.</span>
             </h2>
             <p className="text-[var(--text-secondary)] leading-relaxed max-w-sm text-sm">
-              Agencies charge thousands for creative testing cycles. PixPack gives you the same high-converting variety for free during our beta.
+              Agencies charge thousands for creative testing cycles. PixPack gives you the same high-converting variety for free during our Version 1.0.
             </p>
           </motion.div>
 

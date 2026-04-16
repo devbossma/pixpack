@@ -22,10 +22,10 @@ import {
 
 // ─── Platform cycling data ────────────────────────────────────────────────────
 const PLATFORMS = [
-  { name: 'Instagram Post',  Icon: Instagram,   color: '#E1306C', accent: 'from-[#E1306C]/20 to-[#833AB4]/10' },
-  { name: 'TikTok Ad',       Icon: Music2,       color: '#69C9D0', accent: 'from-[#010101]/20 to-[#69C9D0]/10' },
-  { name: 'Facebook Ad',     Icon: Facebook,     color: '#1877F2', accent: 'from-[#1877F2]/20 to-[#0C4A99]/10' },
-  { name: 'Shopify Product', Icon: ShoppingBag,  color: '#008060', accent: 'from-[#008060]/20 to-[#004C3F]/10' },
+  { name: 'Instagram Post', Icon: Instagram, color: '#E1306C', accent: 'from-[#E1306C]/20 to-[#833AB4]/10' },
+  { name: 'TikTok Ad', Icon: Music2, color: '#69C9D0', accent: 'from-[#010101]/20 to-[#69C9D0]/10' },
+  { name: 'Facebook Ad', Icon: Facebook, color: '#1877F2', accent: 'from-[#1877F2]/20 to-[#0C4A99]/10' },
+  { name: 'Shopify Product', Icon: ShoppingBag, color: '#008060', accent: 'from-[#008060]/20 to-[#004C3F]/10' },
 ]
 
 const AD_ANGLES = ['Lifestyle', 'Hero', 'Context', 'Closeup']
@@ -266,7 +266,7 @@ export default function HeroSection() {
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#ff4d1c]" />
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#ff4d1c]">
-              Free Beta — No account needed
+              Free version 1.0.0
             </span>
           </motion.div>
 
@@ -276,7 +276,7 @@ export default function HeroSection() {
             className="max-w-2xl"
           >
             <span className="sr-only">
-              AI product ad generator — turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify, with platform-native copy, while your coffee brews. Free. No account needed.
+              AI product ad generator — turn one product photo into a full A/B testing ad pack for Instagram, TikTok, Facebook and Shopify, with platform-native copy, while your coffee brews. Free.
             </span>
 
             <div className="overflow-hidden" aria-hidden>
@@ -357,7 +357,7 @@ export default function HeroSection() {
           </motion.button>
 
           <p className="text-[10px] text-[var(--text-muted)] font-medium tracking-widest uppercase">
-            No sign-up · No credit card · Results in &lt; 3 mins
+            No credit card · Results in &lt; 3 mins
           </p>
         </motion.div>
 
@@ -397,8 +397,8 @@ export default function HeroSection() {
         >
           {[
             { value: 12000, suffix: '+', label: 'Packs generated' },
-            { value: 6,     suffix: '',  label: 'Ad platforms' },
-            { value: 20,    suffix: '+', label: 'Markets' },
+            { value: 6, suffix: '', label: 'Ad platforms' },
+            { value: 20, suffix: '+', label: 'Markets' },
           ].map(s => (
             <div key={s.label} className="flex flex-col items-center gap-0.5">
               <span className="font-display font-extrabold text-lg text-[var(--text)] tracking-tight">
@@ -410,17 +410,17 @@ export default function HeroSection() {
 
           <div className="hidden sm:flex items-center gap-2">
             <div className="flex -space-x-1.5">
-              {['#ff4d1c','#ffb800','#00c27a','#3b82f6','#a855f7'].map((c, i) => (
+              {['#ff4d1c', '#ffb800', '#00c27a', '#3b82f6', '#a855f7'].map((c, i) => (
                 <div key={i}
                   className="w-6 h-6 rounded-full border-2 border-[#0c0c0b] flex items-center justify-center text-[9px] font-black text-white"
                   style={{ backgroundColor: c }}>
-                  {['M','D','A','S','K'][i]}
+                  {['M', 'D', 'A', 'S', 'K'][i]}
                 </div>
               ))}
             </div>
             <div className="flex flex-col">
               <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(i => (
+                {[1, 2, 3, 4, 5].map(i => (
                   <svg key={i} width="10" height="10" viewBox="0 0 24 24" fill="#ffb800">
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>

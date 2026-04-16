@@ -34,7 +34,7 @@ export function Topbar({ user }: TopbarProps) {
         </Link>
         <div className="flex items-center gap-2">
           <span className="hidden sm:inline-flex text-[10px] font-bold px-2 py-0.5 rounded-md bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent)]/20 uppercase tracking-widest font-display">
-            Beta
+            Version 1.0.0
           </span>
           <span className="hidden md:inline-flex text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-widest">
             Free trial

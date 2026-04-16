@@ -40,10 +40,10 @@ export function FinalCTA() {
           </h2>
 
           <p className="text-lg text-[var(--text-secondary)] leading-relaxed mb-10 max-w-lg">
-            Stop paying thousands for agencies. Stop writing ad copy from scratch. 
-            Generate your first 12-variant pack for free — while beta lasts.
+            Stop paying thousands for agencies. Stop writing ad copy from scratch.
+            Generate your first 12-variant pack for free — while Version 1.0 lasts.
           </p>
-
+          ``
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             <motion.button
               onClick={() => router.push('/app')}
