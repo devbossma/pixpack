@@ -13,7 +13,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
-
+import { checkEmail } from '@/app/auth/actions'
 type FormState = 'idle' | 'loading' | 'success' | 'error'
 
 export function SignupForm() {
@@ -40,6 +40,14 @@ export function SignupForm() {
     }
 
     setFormState('loading')
+
+    // 1. Verify email format/domain
+    const emailCheck = await checkEmail(email)
+    if (!emailCheck.success) {
+      setError(emailCheck.error || 'Invalid email')
+      setFormState('error')
+      return
+    }
 
     const supabase = createClient()
     const { error: authError } = await supabase.auth.signUp({
